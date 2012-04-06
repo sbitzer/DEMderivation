@@ -92,210 +92,6 @@
 
 \end{abstract}
 
-\section{The Free Energy}
-We differentiate between time-dependent (quickly varying) hidden variables (states) $\ps$ and time-independent (slowly varying) hidden variables (parameters) $\pp$.
-\eq{
-    \ph = \left[\begin{array}{c}
-            \ps\\
-            \pp
-          \end{array}\right] \in \R^{n_\sh}
-}
-
-\eq{\begin{split}
-    F(\po) &= \E[q(\ph)]{\log p(\po,\ph)} - \E[q(\ph)]{\log q(\ph)}\\
-               &= \E[q(\ph)]{\U(\po,\ph)} + \Ent(q(\ph))
-\end{split}}
-
-In the dynamic formulation, the free energy becomes free action and falls into time-dependent and time-independent parts:
-\eq{\begin{split}\label{eq:freeAction}
-    \bar{F}(\Po) &= \int_0^T \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)}dt + \E[q(\pp)]{\U(\pp)}\\ 
-    & \qquad + \int_0^T\Ent(q(\ps(t)))dt + \Ent(q(\pp))\\
-    &= \int_0^T \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)} + \Ent(q(\ps(t))) dt\\
-    & \qquad  + \E[q(\pp)]{\U(\pp)} + \Ent(q(\pp))
-\end{split}}
-This derives from the model:
-\eq{
-    p(\Po,\Ps,\pp) = p(\pp)\prod_{t=0}^T p(\po(t),\ps(t)|\pp)
-}
-\eq{\begin{split}\label{eq:intAction}
-    \Ua(\Po,\Ps,\pp) &= \log p(\Po,\Ps,\pp)\\
-    &= \log p(\pp) + \int_{t=0}^T \log p(\po(t),\ps(t)|\pp)dt\\
-    &= \U(\pp) + \int_{t=0}^T \U(\po(t),\ps(t),\pp)dt
-\end{split}}
-where we have abused the matrix-vector notation by letting matrix formatting stand for a variable which collects values in the continuous time interval $[0,T]$ and assume that the product is defined over this continuous interval, too. The joint distribution is defined as $p(\po(t),\ps(t)|\pp) = p(\po(t)|\ps(t),\pp)p(\ps(t)|\pp)$. However, we have kept the notation as joint distribution as in \citep{Friston2008a}, because the prior $p(\ps(t)|\pp)$ is not explicitly defined there (see description of generalised filtering below). 
-
-\section{Friston's Variational Laplace Approximation}
-\subsection{Static Case}
-The aim is to simplify the free energy by assuming that $q(\ph)$ is Gaussian, i.e.,
-\eq{
-    q(\ph) = \N(\ph|\bgs{\mu},\Cov).
-}
-Then, we can immediately look up the entropy of $q$ \citep[][eq. (366)]{Petersen2008} as
-\eq{\begin{split}
-    \Ent(q(\ph)) &= \frac{1}{2} \left(\log [2\pi^{n_\sh} \det{\Cov}] + n_\sh\right) \\
-                 &= \frac{1}{2} \left(\log \det{\Cov} + n_\sh \log 2\pi e\right).
-\end{split}}
-The crucial trick is to approximate $\U(\po,\ph)$ (Friston calls it the internal or Gibb's energy) with a Taylor series expansion up to second order around the mean of $q$. Because the observations $\po$ are assumed to be fixed here, we drop $\po$ from the list of variables of $\U$
-\eq{
-    \U(\ph) \approx \U(\bgs{\mu}) + (\ph - \bgs{\mu})^\tr \U_\ph(\bgs{\mu}) + \frac{1}{2}(\ph - \bgs{\mu})^\tr \U_{\ph\ph}(\bgs{\mu}) (\ph - \bgs{\mu})
-}
-where $\U_\ph = \pd{\U}{\ph}$ is the gradient of $\U$ and $\U_{\ph\ph} = \ppd{\U}{\ph}{\ph}$ is the Hessian of $\U$ which are evaluated at $\bgs{\mu}$ here. We are actually interested in the expectation of $\U$
-\begin{align}
-    \E[q(\ph)]{\U(\ph)} &\approx 
-            \E[q(\ph)]{\U(\bgs{\mu})} + \E[q(\ph)]{(\ph - \bgs{\mu})^\tr \U_\ph(\bgs{\mu})}\nonumber\\
-               & \qquad + \E[q(\ph)]{\frac{1}{2}(\ph - \bgs{\mu})^\tr \U_{\ph\ph}(\bgs{\mu}) (\ph - \bgs{\mu})}\\
-        &= \U(\bgs{\mu}) + \left(\E[q(\ph)]{\ph} - \bgs{\mu}\right)^\tr \U_\ph(\bgs{\mu}) + \frac{1}{2}\trace{\U_{\ph\ph}(\bgs{\mu})\Cov}\\
-        &= \U(\bgs{\mu}) + \frac{1}{2}\trace{\U_{\ph\ph}(\bgs{\mu})\Cov}
-\end{align}
-where we have solved the expectation of the quadratic term using standard results for the multivariate Gaussian distribution \citep[][eq. (357)]{Petersen2008}. This result can be easily transferred to the case where $q$ factorises
-\eq{
-    q(\ph) = \prod_i q_i(\ph^i)
-}
-where $\ph^i \in \R^{n_{\sh_i}}$ is a subset of the hidden variables in our model, i.e., $\ph^1$ could be $\ps$ and $\ph^2$ could be $\pp$, but also further subdivisions can be used. Actually, we can still represent the factorised $q(\ph)$ with a Gaussian distribution over all variables. We just need to give $\Cov$ a suitable block-diagonal structure (assuming a suitable ordering of variables) which ensures the independence of the subsets of hidden variables $\ph^i$. These blocks of $\Cov$ are $\Cov^i$ and it is easy to see then that
-\eq{\label{eq:blockq}
-    \E[q(\ph)]{\U(\ph)} \approx \U(\bgs{\mu}) + \frac{1}{2}\sum_i\trace{\U_{\ph^i\ph^i}(\bgs{\mu})\Cov^i}.
-}
-These considerations also apply to the entropy term. Consequently, we have approximated the free energy as
-\eq{\begin{split}\label{eq:FapproxC}
-    F(\po) &\approx \U(\bgs{\mu}) + \frac{1}{2}\sum_i\trace{\U_{\ph^i\ph^i}(\bgs{\mu})\Cov^i} + \frac{1}{2} \sum_i\left(\log \det{\Cov^i} + n_{\sh^i} \log 2\pi e\right)\\
-    &= \F(\po).
-\end{split}}
-Note that this is based on an approximation of $\U(\po,\ph) = \log p(\po|\ph)p(\ph) = \log p(\ph|\po) + c$ while usually the Laplace approximation is based on directly approximating the  log-posterior $\log p(\ph|\po)$. However, you see that these only differ by a constant which leads to equivalent results.
-
-The aim of variational inference is to find $q(\ph)$ which maximises $F(\po)$ which in our case is approximated by $\F(\po)$. As $q$ is Gaussian we need to find its mean $\bgs{\mu}$ and covariance $\Cov$. Let us consider $\Cov$ first. The gradient of $\F(\po)$ with respect to $\Cov$ is\footnote{For the sake of simplicity of presentation we here ignore the potential block structure of $\Cov$, but everything goes through equivalently for any $\Cov^i$}.
-\eq{
-    \F_{\Cov}(\po) = \frac{1}{2} \U_{\ph\ph}(\bgs{\mu}) + \frac{1}{2} \Cov^{-1}
-}
-where we have used \citep[][eq. (96)]{Petersen2008} and that $\pd{\log \det{\Cov}}{\Cov} = \Cov^{-1}$ based on \citep[][eq. (43)]{Petersen2008}. Setting the gradient to 0 leads to
-\eq{\label{eq:covSol}
-    \Cov^{-1} = -\U_{\ph\ph}(\bgs{\mu})
-}
-such that
-\begin{align}
-    \F(\po) &= \U(\bgs{\mu}) - \frac{1}{2}\trace{\U_{\ph\ph}(\bgs{\mu})\U_{\ph\ph}^{-1}(\bgs{\mu})} + \frac{1}{2} \left(\log \det{-\U_{\ph\ph}^{-1}(\bgs{\mu})} + n_\sh \log 2\pi e\right)\nonumber\\
-    &= \U(\bgs{\mu}) - \frac{1}{2}n_\sh + \frac{1}{2} \left(\log \det{-\U_{\ph\ph}^{-1}(\bgs{\mu})} + n_\sh \log 2\pi e\right)\nonumber\\
-    &= \U(\bgs{\mu}) + \frac{1}{2} \left(\log \det{-\U_{\ph\ph}^{-1}(\bgs{\mu})} + n_\sh \log 2\pi\right)\\
-    &= \label{eq:approxFreeE}\U(\bgs{\mu}) + \frac{1}{2} \sum_i \left(\log \det{-\U_{\ph^i \ph^i}^{-1}(\bgs{\mu})} + n_{\sh^i} \log 2\pi\right)
-\end{align}
-where we have reintroduced the block structure of $\Cov$ for different hidden variables in the last line.
-
-
-\subsection{Dynamic Case}
-We now apply these derivations in the dynamic context. We start from the free action as defined by Friston (repeated from eq. \eqref{eq:freeAction}):
-\[
-    \bar{F}(\Po) = \int_0^T \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)} + \Ent(q(\ps(t))) dt + \E[q(\pp)]{\U(\pp)} + \Ent(q(\pp)).
-\]
-The basic approach is to note that the parts of this equation are in the form of the static free energy above. Therefore, we can directly see from eq. \eqref{eq:FapproxC} that (remember that $\U(\pp)$ is just the prior for $\pp$ which is independent of any data)
-\begin{align}
-    F^\sp &= \E[q(\pp)]{\U(\pp)} + \Ent(q(\pp))\\
-    &\approx \U(\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\pp\pp}(\bgs{\mu}_\sp)\Cov^\sp} + \frac{1}{2} \left(\log \det{\Cov^\sp} + n_{\sp} \log 2\pi e\right)\\
-    &= \F^\sp.
-\end{align}
-Similarly, we consider the part for the states inside the integral
-\begin{align}
-    F^\ss(\po(t)) &= \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)} + \Ent(q(\ps(t)))\\
-    &= \E[q(\ph)]{\U(\po(t),\ph)} + \Ent(q(\ps(t)))\\
-    &\approx \U(\po(t),\bgs{\mu}) + \frac{1}{2}\trace{\U_{\ph\ph}(\po(t),\bgs{\mu})\Cov} \nonumber\\
-    &\qquad + \frac{1}{2} \left(\log \det{\Cov^{\ss(t)}} + n_{\ss} \log 2\pi e\right)\\
-    &= \label{eq:stateFreeAction} \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}\nonumber\\
-    &\qquad + \frac{1}{2}\trace{\U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^\sp}\nonumber\\ 
-    &\qquad + \frac{1}{2} \left(\log \det{\Cov^{\ss(t)}} + n_{\ss} \log 2\pi e\right)\\
-    &= \F^\ss(\po(t))
-\end{align}
-where we have used the same argument as for eq. \eqref{eq:blockq} to separate the 2nd order gradients with respect to states and parameters based on their independence in $q$. Putting things together we get
-\begin{align}
-    \bar{F}(\Po) &= \int_0^T F^\ss(\po(t)) dt + F^\sp\\
-    &\approx \int_0^T \F^\ss(\po(t)) dt + \F^\sp\\
-    &= \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}\nonumber\\
-    &\quad + \frac{1}{2}\trace{\U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^\sp} + \frac{1}{2}\log \det{\Cov^{\ss(t)}} dt \nonumber\\ 
-    &\quad + \U(\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\pp\pp}(\bgs{\mu}_\sp)\Cov^\sp}\nonumber\\
-    &\quad + \frac{1}{2} \left(\log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi e\right)\\
-    &= \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U(\bgs{\mu}_\sp) \nonumber\\
-    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}dt\nonumber\\
-    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^\sp} dt + \frac{1}{2}\trace{\U_{\pp\pp}(\bgs{\mu}_\sp)\Cov^\sp}\nonumber\\
-    &\quad + \frac{1}{2} \left(\int_0^T \log \det{\Cov^{\ss(t)}} dt + \log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi e\right)\\
-    &= \label{eq:approxFreeActionFull} \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U(\bgs{\mu}_\sp) \nonumber\\
-    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}dt\nonumber\\
-    &\quad + \frac{1}{2} \trace{\left(\int_0^T \U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U_{\pp\pp}(\bgs{\mu}_\sp)\right)\Cov^\sp}\nonumber\\
-    &\quad + \frac{1}{2} \left(\int_0^T \log \det{\Cov^{\ss(t)}} dt + \log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi e\right)\\
-    &= \Fa(\Po).
-\end{align}
-In analogy to eq. \eqref{eq:covSol} we see that the posterior state covariances which maximise $\Fa(\Po)$ are given as
-\eq{\label{eq:postCovStates}
-    \Cov^{\ss(t)^{-1}} = -\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp).
-}
-Equivalently, we can derive the posterior parameter covariance:
-\eq{\label{eq:postCovParam}
-    \Cov^{\sp^{-1}} = -\left(\int_0^T \U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U_{\pp\pp}(\bgs{\mu}_\sp)\right).
-}
-Plugging in the result for the posterior state covariance we can simplify eq. \eqref{eq:approxFreeActionFull} as above
-\begin{align}
-    \Fa(\Po) &= \label{eq:approxFreeAction} \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt +  \U(\bgs{\mu}_\sp) \nonumber\\
-    &\quad + \frac{1}{2} \left(\int_0^T \log \det{\Cov^{\ss(t)}} dt + \log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi\right).
-\end{align}
-It is now tempting to implement the parameter learning by gradient ascent on $\Fa(\Po)$ with respect to the posterior mode of the parameters $\bgs{\mu}_\sp$. The gradient of the approximated free action is (for simplicity of treatment we consider only a single parameter $\mu_{\sp_i}$):
-\begin{align}
-    \Fa_{\mu_{\sp_i}}(\Po) &= \Ua_{\sp_i}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}dt\nonumber\\
-    &\quad \label{eq:approxFreeActionDp} + \frac{1}{2}\trace{\Ua_{\pp\pp\sp_i}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp)\Cov^\sp}.
-\end{align}
-We derived this gradient using 
-\begin{align}
-    \pd{\log \det{\Cov}}{x} &= \frac{1}{\det{\Cov}}\det{\Cov}\trace{\Cov^{-1}\pd{\Cov}{x}}\\
-    &= \trace{\Cov^{-1}\Cov\pd{\bs{U}}{x}\Cov}\\
-    &= \trace{\pd{\bs{U}}{x}\Cov}
-\end{align}
-together with $\Cov = -\bs{U}^{-1}$ based on \citep[][eqs. (41) and (53)]{Petersen2008}. The second order gradients with respect to $\sp_j$ can be derived using
-\begin{align}
-    \pd{\pd{\bs{U}}{x}\Cov}{y} &= \ppd{\bs{U}}{x}{y}\Cov - \pd{\bs{U}}{x}\pd{\bs{U}^{-1}}{y}\\
-    &= \ppd{\bs{U}}{x}{y}\Cov + \pd{\bs{U}}{x}\bs{U}^{-1}\pd{\bs{U}}{y}\bs{U}^{-1}\\
-    &= \ppd{\bs{U}}{x}{y}\Cov + \pd{\bs{U}}{x}\Cov\pd{\bs{U}}{y}\Cov
-\end{align}
-what leads to
-\begin{align}
-    \Fa_{\mu_{\sp_i}\mu_{\sp_j}}(\Po) &= \Ua_{\sp_i\sp_j}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp) \nonumber\\
-    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i\sp_j}\Cov^{\ss(t)} - \U_{\ps(t)\ps(t)\sp_i}\Cov^{\ss(t)}\U_{\ps(t)\ps(t)\sp_j}\Cov^{\ss(t)}} dt\nonumber\\
-    &\quad \label{eq:approxFreeActionDpDp} + \frac{1}{2}\trace{\Ua_{\pp\pp\sp_i\sp_j}\Cov^\sp + \Ua_{\pp\pp\sp_i}\Cov^\sp\Ua_{\pp\pp\sp_j}\Cov^\sp}
-\end{align}
-where we have dropped the dependencies of $\U$ for convenience of writing. However, these gradients also depend on the posterior modes of the states $\bgs{\mu}_\Ps$ and maximisation of $\Fa(\Po)$, therefore, will have to iterate between maximising posterior modes of states and posterior modes of parameters.
-
-It is clear now that we need third and fourth order gradients of $\U$ to maximise $\Fa(\Po)$ which makes this optimisation computationally very expensive. For example, to compute all elements of the matrix defined by $[\cdot]_{ij} = \trace{\Ua_{\pp\pp\sp_i}\Cov^\sp\Ua_{\pp\pp\sp_j}\Cov^\sp}$ is of complexity $O(n_\sp^6)$ where $\pp \in \R^{n_\sp\times 1}$ (when ignoring the cost of computing the gradients of $\Ua_{\pp\pp}$). Similarly, computing all elements defined by the second line of eq. \eqref{eq:approxFreeActionDpDp} has complexity $O(n_\sp^2n_\ss^4)$. Computing the first order gradient $\Fa_{\pp}(\Po)$ still has complexity $O(n_\sp n_\ss^2)$, or $O(n_\sp^3)$, respectively, depending on whether $n_\ss$ or $n_\sp$ is larger.
-
-Friston finds the posterior mode in a different way. Equivalently to the dynamic solution for the states he uses the variational result that $\bar{F}(\Po)$ is maximised with respect to $q(\pp)$, while holding $q(\Ps)$ fixed, when
-\eq{\label{eq:qParamVariational}
-    q(\pp) = \frac{1}{Z^\sp} \exp(\Va(\Po,\pp))
-}
-where
-\begin{align}
-    \Va(\Po,\pp) &= \E[q(\Ps)]{\Ua(\Po,\Ps,\pp)}\\
-    &= \U(\pp) + \int_0^T \E[q(\ps(t))]{\U(\po(t),\ps(t),\pp)} dt\\
-    &\approx \U(\pp) + \int_0^T \U(\po(t),\bgs{\mu}_{\ss(t)},\pp) dt \nonumber\\
-    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}} dt\\
-    &= \label{eq:approxVarAction} \Ua(\Po,\bgs{\mu}_\Ps,\pp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}dt
-\end{align}
-where we have used the independence of the $q(\ps(t))$ and the first line of eq. \eqref{eq:stateFreeAction} (a result from the Laplace approximation). We only need to find the (rather "a") mode of $q(\pp)$ from which we already can compute $\Cov^\sp$ (provided we also have the modes $\bgs{\mu}_{\ss(t)}$) which would complete our Laplace approximation. Also, it is clear from eq. \eqref{eq:qParamVariational} that a maximum of $q(\pp)$ (a mode) is equal to a maximum of $\Va(\Po,\pp)$, because the exponential function is monotonically increasing. Hence, Friston suggests to maximise $\Va(\Po,\pp)$ instead of directly maximising $\Fa(\Po)$. At this point it is instructive to remember that the interpretation of the two optimisations is different. We maximise $\Fa(\Po)$ directly with respect to the posterior mode $\bgs{\mu}_\sp$ which was possible because of the Laplace approximation for both states and parameters. On the other hand, we maximise $\Va(\Po,\pp)$ with respect to the parameters used in the model $\pp$ in order to find a posterior mode $\bgs{\mu}_\sp$ based on a Laplace approximation around the posterior mode of the states only. Notice that this approach makes no assumptions about the form of $q(\pp)$ while we assumed a Gaussian $q(\pp)$ in deriving $\Fa(\Po)$.
-
-The first and second order gradients of $\Va(\Po,\pp)$ are
-\begin{align}
-    \Va_{\sp_i}(\Po,\pp) &= \label{eq:approxVarActionDp} \Ua_{\sp_i}(\Po,\bgs{\mu}_\Ps,\pp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}dt
-\end{align}
-\begin{align}
-    \Va_{\sp_i\sp_j}(\Po,\pp) &= \label{eq:approxVarActionDpp} \Ua_{\sp_i\sp_j}(\Po,\bgs{\mu}_\Ps,\pp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i\sp_j}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}dt.
-\end{align}
-Therefore, this approach saves us the computation of $\frac{1}{2}\trace{\Ua_{\pp\pp\sp_i}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp)\Cov^\sp}$ in the first order gradients (compare eqs. \ref{eq:approxFreeActionDp} and \ref{eq:approxVarActionDp}) and also considerably simplifies computation of the second order gradients. 
-
-Shouldn't both approaches lead to a mode $\bgs{\mu}_\sp$ which maximises $\Fa(\Po)$? Eventually, i.e., after iterating between optimising for $\bgs{\mu}_\sp$ and optimising for $\bgs{\mu}_\Ps$, we guess, yes, but this is hard to see from these equations. We do note, though, that optimising $\Fa(\Po)$ with respect to $\bgs{\mu}_\sp$ takes additionally the posterior uncertainty $\Cov^\sp$ of $\pp$ (which is a function of $\bgs{\mu}_\sp$) into account while this only enters in the computation of the posterior mode $\bgs{\mu}_\Ps$ in the variational approach. Potential advantages of this, e.g., in terms of better convergence properties, are unclear to us at this point.
-
-The computational advantage of optimising $\Va(\Po,\pp)$ instead of $\Fa(\Po)$ is greatest for the second order gradients where the complexity for computing all elements of $[\cdot]_{ij} = \trace{\U_{\ps(t)\ps(t)\sp_i\sp_j}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}$ is $O(n_\sp^2n_\ss^2)$. Nevertheless, 4th order gradients of $\Ua$ still need to be computed. We could radically reduce the computational costs further, if we ignore the mean-field terms of the variational approximation. Then, the gradients simply become
-\begin{align}
-    \Va_{\sp_i}(\Po,\pp) &= \Ua_{\sp_i}(\Po,\bgs{\mu}_\Ps,\pp)
-\end{align}
-\begin{align}
-    \Va_{\sp_i\sp_j}(\Po,\pp) &= \Ua_{\sp_i\sp_j}(\Po,\bgs{\mu}_\Ps,\pp)
-\end{align}
-and we would have reduced our variational problem to a simple maximum a posteriori optimisation to find the mode of our approximated posterior density $q(\pp)$. In this case, the only computational complexity left would be the cost of computing the first and second order gradients of $\Ua$. This is actually what would usually be understood as the Laplace approximation: find the MAP estimate for $\pp$ and then simply put a Gaussian around it based on the local curvature of $\Ua$ (cf. eq. \eqref{eq:postCovParam}). Of course, when using this approach, we would ignore the uncertainty of the states and the result would not be a solution which optimises the approximated free action $\Fa(\Po)$ anymore. On the other hand, this may still be a viable approach when the uncertainties are low such that the mean-field terms contribute only little to the optimisation.
-
-In conclusion, we have presented three approaches to finding an approximated posterior mode of parameters $\bgs{\mu}_\sp$ which, for the benefit of decreasing computational costs, take decreasing amounts of information about posterior uncertainty of states and parameters into account.
-
 
 \section{Nonlinear Gaussian Dynamic Models}
 Whatever function is used in the end to find the posterior mode, all corresponding gradients are computed from the gradients of $\Ua$. So it is time to look at the structure of $\Ua$. Notice that from here on subscripts of variables or functions are used solely to identify different variables or functions, or to index into matrices and vectors. Partial derivatives are written out in the standard format. While this clutters the formulae more, it helps us to make them conceptually clearer.
@@ -553,7 +349,216 @@ As a result we get a (potentially very large) sparse matrix $\ppd{\U(\pog(t),\pt
 
 
 
-\section{Following the Posterior Mode}
+
+\section{The Free Energy}
+We differentiate between time-dependent (quickly varying) hidden variables (states) $\ps$ and time-independent (slowly varying) hidden variables (parameters) $\pp$.
+\eq{
+    \ph = \left[\begin{array}{c}
+            \ps\\
+            \pp
+          \end{array}\right] \in \R^{n_\sh}
+}
+
+\eq{\begin{split}
+    F(\po) &= \E[q(\ph)]{\log p(\po,\ph)} - \E[q(\ph)]{\log q(\ph)}\\
+               &= \E[q(\ph)]{\U(\po,\ph)} + \Ent(q(\ph))
+\end{split}}
+
+In the dynamic formulation, the free energy becomes free action and falls into time-dependent and time-independent parts:
+\eq{\begin{split}\label{eq:freeAction}
+    \bar{F}(\Po) &= \int_0^T \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)}dt + \E[q(\pp)]{\U(\pp)}\\ 
+    & \qquad + \int_0^T\Ent(q(\ps(t)))dt + \Ent(q(\pp))\\
+    &= \int_0^T \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)} + \Ent(q(\ps(t))) dt\\
+    & \qquad  + \E[q(\pp)]{\U(\pp)} + \Ent(q(\pp))
+\end{split}}
+This derives from the model:
+\eq{
+    p(\Po,\Ps,\pp) = p(\pp)\prod_{t=0}^T p(\po(t),\ps(t)|\pp)
+}
+\eq{\begin{split}\label{eq:intAction}
+    \Ua(\Po,\Ps,\pp) &= \log p(\Po,\Ps,\pp)\\
+    &= \log p(\pp) + \int_{t=0}^T \log p(\po(t),\ps(t)|\pp)dt\\
+    &= \U(\pp) + \int_{t=0}^T \U(\po(t),\ps(t),\pp)dt
+\end{split}}
+where we have abused the matrix-vector notation by letting matrix formatting stand for a variable which collects values in the continuous time interval $[0,T]$ and assume that the product is defined over this continuous interval, too. The joint distribution is defined as $p(\po(t),\ps(t)|\pp) = p(\po(t)|\ps(t),\pp)p(\ps(t)|\pp)$. However, we have kept the notation as joint distribution as in \citep{Friston2008a}, because the prior $p(\ps(t)|\pp)$ is not explicitly defined there (see description of generalised filtering below). 
+
+\section{Friston's Variational Laplace Approximation}
+\subsection{Static Case}
+The aim is to simplify the free energy by assuming that $q(\ph)$ is Gaussian, i.e.,
+\eq{
+    q(\ph) = \N(\ph|\bgs{\mu},\Cov).
+}
+Then, we can immediately look up the entropy of $q$ \citep[][eq. (366)]{Petersen2008} as
+\eq{\begin{split}
+    \Ent(q(\ph)) &= \frac{1}{2} \left(\log [2\pi^{n_\sh} \det{\Cov}] + n_\sh\right) \\
+                 &= \frac{1}{2} \left(\log \det{\Cov} + n_\sh \log 2\pi e\right).
+\end{split}}
+The crucial trick is to approximate $\U(\po,\ph)$ (Friston calls it the internal or Gibb's energy) with a Taylor series expansion up to second order around the mean of $q$. Because the observations $\po$ are assumed to be fixed here, we drop $\po$ from the list of variables of $\U$
+\eq{
+    \U(\ph) \approx \U(\bgs{\mu}) + (\ph - \bgs{\mu})^\tr \U_\ph(\bgs{\mu}) + \frac{1}{2}(\ph - \bgs{\mu})^\tr \U_{\ph\ph}(\bgs{\mu}) (\ph - \bgs{\mu})
+}
+where $\U_\ph = \pd{\U}{\ph}$ is the gradient of $\U$ and $\U_{\ph\ph} = \ppd{\U}{\ph}{\ph}$ is the Hessian of $\U$ which are evaluated at $\bgs{\mu}$ here. We are actually interested in the expectation of $\U$
+\begin{align}
+    \E[q(\ph)]{\U(\ph)} &\approx 
+            \E[q(\ph)]{\U(\bgs{\mu})} + \E[q(\ph)]{(\ph - \bgs{\mu})^\tr \U_\ph(\bgs{\mu})}\nonumber\\
+               & \qquad + \E[q(\ph)]{\frac{1}{2}(\ph - \bgs{\mu})^\tr \U_{\ph\ph}(\bgs{\mu}) (\ph - \bgs{\mu})}\\
+        &= \U(\bgs{\mu}) + \left(\E[q(\ph)]{\ph} - \bgs{\mu}\right)^\tr \U_\ph(\bgs{\mu}) + \frac{1}{2}\trace{\U_{\ph\ph}(\bgs{\mu})\Cov}\\
+        &= \U(\bgs{\mu}) + \frac{1}{2}\trace{\U_{\ph\ph}(\bgs{\mu})\Cov}
+\end{align}
+where we have solved the expectation of the quadratic term using standard results for the multivariate Gaussian distribution \citep[][eq. (357)]{Petersen2008}. This result can be easily transferred to the case where $q$ factorises
+\eq{
+    q(\ph) = \prod_i q_i(\ph^i)
+}
+where $\ph^i \in \R^{n_{\sh_i}}$ is a subset of the hidden variables in our model, i.e., $\ph^1$ could be $\ps$ and $\ph^2$ could be $\pp$, but also further subdivisions can be used. Actually, we can still represent the factorised $q(\ph)$ with a Gaussian distribution over all variables. We just need to give $\Cov$ a suitable block-diagonal structure (assuming a suitable ordering of variables) which ensures the independence of the subsets of hidden variables $\ph^i$. These blocks of $\Cov$ are $\Cov^i$ and it is easy to see then that
+\eq{\label{eq:blockq}
+    \E[q(\ph)]{\U(\ph)} \approx \U(\bgs{\mu}) + \frac{1}{2}\sum_i\trace{\U_{\ph^i\ph^i}(\bgs{\mu})\Cov^i}.
+}
+These considerations also apply to the entropy term. Consequently, we have approximated the free energy as
+\eq{\begin{split}\label{eq:FapproxC}
+    F(\po) &\approx \U(\bgs{\mu}) + \frac{1}{2}\sum_i\trace{\U_{\ph^i\ph^i}(\bgs{\mu})\Cov^i} + \frac{1}{2} \sum_i\left(\log \det{\Cov^i} + n_{\sh^i} \log 2\pi e\right)\\
+    &= \F(\po).
+\end{split}}
+Note that this is based on an approximation of $\U(\po,\ph) = \log p(\po|\ph)p(\ph) = \log p(\ph|\po) + c$ while usually the Laplace approximation is based on directly approximating the  log-posterior $\log p(\ph|\po)$. However, you see that these only differ by a constant which leads to equivalent results.
+
+The aim of variational inference is to find $q(\ph)$ which maximises $F(\po)$ which in our case is approximated by $\F(\po)$. As $q$ is Gaussian we need to find its mean $\bgs{\mu}$ and covariance $\Cov$. Let us consider $\Cov$ first. The gradient of $\F(\po)$ with respect to $\Cov$ is\footnote{For the sake of simplicity of presentation we here ignore the potential block structure of $\Cov$, but everything goes through equivalently for any $\Cov^i$}.
+\eq{
+    \F_{\Cov}(\po) = \frac{1}{2} \U_{\ph\ph}(\bgs{\mu}) + \frac{1}{2} \Cov^{-1}
+}
+where we have used \citep[][eq. (96)]{Petersen2008} and that $\pd{\log \det{\Cov}}{\Cov} = \Cov^{-1}$ based on \citep[][eq. (43)]{Petersen2008}. Setting the gradient to 0 leads to
+\eq{\label{eq:covSol}
+    \Cov^{-1} = -\U_{\ph\ph}(\bgs{\mu})
+}
+such that
+\begin{align}
+    \F(\po) &= \U(\bgs{\mu}) - \frac{1}{2}\trace{\U_{\ph\ph}(\bgs{\mu})\U_{\ph\ph}^{-1}(\bgs{\mu})} + \frac{1}{2} \left(\log \det{-\U_{\ph\ph}^{-1}(\bgs{\mu})} + n_\sh \log 2\pi e\right)\nonumber\\
+    &= \U(\bgs{\mu}) - \frac{1}{2}n_\sh + \frac{1}{2} \left(\log \det{-\U_{\ph\ph}^{-1}(\bgs{\mu})} + n_\sh \log 2\pi e\right)\nonumber\\
+    &= \U(\bgs{\mu}) + \frac{1}{2} \left(\log \det{-\U_{\ph\ph}^{-1}(\bgs{\mu})} + n_\sh \log 2\pi\right)\\
+    &= \label{eq:approxFreeE}\U(\bgs{\mu}) + \frac{1}{2} \sum_i \left(\log \det{-\U_{\ph^i \ph^i}^{-1}(\bgs{\mu})} + n_{\sh^i} \log 2\pi\right)
+\end{align}
+where we have reintroduced the block structure of $\Cov$ for different hidden variables in the last line.
+
+
+\subsection{Dynamic Case}
+We now apply these derivations in the dynamic context. We start from the free action as defined by Friston (repeated from eq. \eqref{eq:freeAction}):
+\[
+    \bar{F}(\Po) = \int_0^T \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)} + \Ent(q(\ps(t))) dt + \E[q(\pp)]{\U(\pp)} + \Ent(q(\pp)).
+\]
+The basic approach is to note that the parts of this equation are in the form of the static free energy above. Therefore, we can directly see from eq. \eqref{eq:FapproxC} that (remember that $\U(\pp)$ is just the prior for $\pp$ which is independent of any data)
+\begin{align}
+    F^\sp &= \E[q(\pp)]{\U(\pp)} + \Ent(q(\pp))\\
+    &\approx \U(\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\pp\pp}(\bgs{\mu}_\sp)\Cov^\sp} + \frac{1}{2} \left(\log \det{\Cov^\sp} + n_{\sp} \log 2\pi e\right)\\
+    &= \F^\sp.
+\end{align}
+Similarly, we consider the part for the states inside the integral
+\begin{align}
+    F^\ss(\po(t)) &= \E[q(\ps(t))q(\pp)]{\U(\po(t),\ps(t),\pp)} + \Ent(q(\ps(t)))\\
+    &= \E[q(\ph)]{\U(\po(t),\ph)} + \Ent(q(\ps(t)))\\
+    &\approx \U(\po(t),\bgs{\mu}) + \frac{1}{2}\trace{\U_{\ph\ph}(\po(t),\bgs{\mu})\Cov} \nonumber\\
+    &\qquad + \frac{1}{2} \left(\log \det{\Cov^{\ss(t)}} + n_{\ss} \log 2\pi e\right)\\
+    &= \label{eq:stateFreeAction} \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}\nonumber\\
+    &\qquad + \frac{1}{2}\trace{\U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^\sp}\nonumber\\ 
+    &\qquad + \frac{1}{2} \left(\log \det{\Cov^{\ss(t)}} + n_{\ss} \log 2\pi e\right)\\
+    &= \F^\ss(\po(t))
+\end{align}
+where we have used the same argument as for eq. \eqref{eq:blockq} to separate the 2nd order gradients with respect to states and parameters based on their independence in $q$. Putting things together we get
+\begin{align}
+    \bar{F}(\Po) &= \int_0^T F^\ss(\po(t)) dt + F^\sp\\
+    &\approx \int_0^T \F^\ss(\po(t)) dt + \F^\sp\\
+    &= \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}\nonumber\\
+    &\quad + \frac{1}{2}\trace{\U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^\sp} + \frac{1}{2}\log \det{\Cov^{\ss(t)}} dt \nonumber\\ 
+    &\quad + \U(\bgs{\mu}_\sp) + \frac{1}{2}\trace{\U_{\pp\pp}(\bgs{\mu}_\sp)\Cov^\sp}\nonumber\\
+    &\quad + \frac{1}{2} \left(\log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi e\right)\\
+    &= \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U(\bgs{\mu}_\sp) \nonumber\\
+    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}dt\nonumber\\
+    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^\sp} dt + \frac{1}{2}\trace{\U_{\pp\pp}(\bgs{\mu}_\sp)\Cov^\sp}\nonumber\\
+    &\quad + \frac{1}{2} \left(\int_0^T \log \det{\Cov^{\ss(t)}} dt + \log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi e\right)\\
+    &= \label{eq:approxFreeActionFull} \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U(\bgs{\mu}_\sp) \nonumber\\
+    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}dt\nonumber\\
+    &\quad + \frac{1}{2} \trace{\left(\int_0^T \U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U_{\pp\pp}(\bgs{\mu}_\sp)\right)\Cov^\sp}\nonumber\\
+    &\quad + \frac{1}{2} \left(\int_0^T \log \det{\Cov^{\ss(t)}} dt + \log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi e\right)\\
+    &= \Fa(\Po).
+\end{align}
+In analogy to eq. \eqref{eq:covSol} we see that the posterior state covariances which maximise $\Fa(\Po)$ are given as
+\eq{\label{eq:postCovStates}
+    \Cov^{\ss(t)^{-1}} = -\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp).
+}
+Equivalently, we can derive the posterior parameter covariance:
+\eq{\label{eq:postCovParam}
+    \Cov^{\sp^{-1}} = -\left(\int_0^T \U_{\pp\pp}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt + \U_{\pp\pp}(\bgs{\mu}_\sp)\right).
+}
+Plugging in the result for the posterior state covariance we can simplify eq. \eqref{eq:approxFreeActionFull} as above
+\begin{align}
+    \Fa(\Po) &= \label{eq:approxFreeAction} \int_0^T  \U(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)dt +  \U(\bgs{\mu}_\sp) \nonumber\\
+    &\quad + \frac{1}{2} \left(\int_0^T \log \det{\Cov^{\ss(t)}} dt + \log \det{\Cov^\sp} + (Tn_\ss + n_{\sp}) \log 2\pi\right).
+\end{align}
+
+
+\section{Finding the Posterior Mode of the Parameters}
+It is now tempting to implement the parameter learning by gradient ascent on $\Fa(\Po)$ with respect to the posterior mode of the parameters $\bgs{\mu}_\sp$. The gradient of the approximated free action is (for simplicity of treatment we consider only a single parameter $\mu_{\sp_i}$):
+\begin{align}
+    \Fa_{\mu_{\sp_i}}(\Po) &= \Ua_{\sp_i}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i}(\po(t),\bgs{\mu}_{\ss(t)},\bgs{\mu}_\sp)\Cov^{\ss(t)}}dt\nonumber\\
+    &\quad \label{eq:approxFreeActionDp} + \frac{1}{2}\trace{\Ua_{\pp\pp\sp_i}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp)\Cov^\sp}.
+\end{align}
+We derived this gradient using 
+\begin{align}
+    \pd{\log \det{\Cov}}{x} &= \frac{1}{\det{\Cov}}\det{\Cov}\trace{\Cov^{-1}\pd{\Cov}{x}}\\
+    &= \trace{\Cov^{-1}\Cov\pd{\bs{U}}{x}\Cov}\\
+    &= \trace{\pd{\bs{U}}{x}\Cov}
+\end{align}
+together with $\Cov = -\bs{U}^{-1}$ based on \citep[][eqs. (41) and (53)]{Petersen2008}. The second order gradients with respect to $\sp_j$ can be derived using
+\begin{align}
+    \pd{\pd{\bs{U}}{x}\Cov}{y} &= \ppd{\bs{U}}{x}{y}\Cov - \pd{\bs{U}}{x}\pd{\bs{U}^{-1}}{y}\\
+    &= \ppd{\bs{U}}{x}{y}\Cov + \pd{\bs{U}}{x}\bs{U}^{-1}\pd{\bs{U}}{y}\bs{U}^{-1}\\
+    &= \ppd{\bs{U}}{x}{y}\Cov + \pd{\bs{U}}{x}\Cov\pd{\bs{U}}{y}\Cov
+\end{align}
+what leads to
+\begin{align}
+    \Fa_{\mu_{\sp_i}\mu_{\sp_j}}(\Po) &= \Ua_{\sp_i\sp_j}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp) \nonumber\\
+    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i\sp_j}\Cov^{\ss(t)} - \U_{\ps(t)\ps(t)\sp_i}\Cov^{\ss(t)}\U_{\ps(t)\ps(t)\sp_j}\Cov^{\ss(t)}} dt\nonumber\\
+    &\quad \label{eq:approxFreeActionDpDp} + \frac{1}{2}\trace{\Ua_{\pp\pp\sp_i\sp_j}\Cov^\sp + \Ua_{\pp\pp\sp_i}\Cov^\sp\Ua_{\pp\pp\sp_j}\Cov^\sp}
+\end{align}
+where we have dropped the dependencies of $\U$ for convenience of writing. However, these gradients also depend on the posterior modes of the states $\bgs{\mu}_\Ps$ and maximisation of $\Fa(\Po)$, therefore, will have to iterate between maximising posterior modes of states and posterior modes of parameters.
+
+It is clear now that we need third and fourth order gradients of $\U$ to maximise $\Fa(\Po)$ which makes this optimisation computationally very expensive. For example, to compute all elements of the matrix defined by $[\cdot]_{ij} = \trace{\Ua_{\pp\pp\sp_i}\Cov^\sp\Ua_{\pp\pp\sp_j}\Cov^\sp}$ is of complexity $O(n_\sp^6)$ where $\pp \in \R^{n_\sp\times 1}$ (when ignoring the cost of computing the gradients of $\Ua_{\pp\pp}$). Similarly, computing all elements defined by the second line of eq. \eqref{eq:approxFreeActionDpDp} has complexity $O(n_\sp^2n_\ss^4)$. Computing the first order gradient $\Fa_{\pp}(\Po)$ still has complexity $O(n_\sp n_\ss^2)$, or $O(n_\sp^3)$, respectively, depending on whether $n_\ss$ or $n_\sp$ is larger.
+
+Friston finds the posterior mode in a different way. Equivalently to the dynamic solution for the states he uses the variational result that $\bar{F}(\Po)$ is maximised with respect to $q(\pp)$, while holding $q(\Ps)$ fixed, when
+\eq{\label{eq:qParamVariational}
+    q(\pp) = \frac{1}{Z^\sp} \exp(\Va(\Po,\pp))
+}
+where
+\begin{align}
+    \Va(\Po,\pp) &= \E[q(\Ps)]{\Ua(\Po,\Ps,\pp)}\\
+    &= \U(\pp) + \int_0^T \E[q(\ps(t))]{\U(\po(t),\ps(t),\pp)} dt\\
+    &\approx \U(\pp) + \int_0^T \U(\po(t),\bgs{\mu}_{\ss(t)},\pp) dt \nonumber\\
+    &\quad + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}} dt\\
+    &= \label{eq:approxVarAction} \Ua(\Po,\bgs{\mu}_\Ps,\pp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}dt
+\end{align}
+where we have used the independence of the $q(\ps(t))$ and the first line of eq. \eqref{eq:stateFreeAction} (a result from the Laplace approximation). We only need to find the (rather "a") mode of $q(\pp)$ from which we already can compute $\Cov^\sp$ (provided we also have the modes $\bgs{\mu}_{\ss(t)}$) which would complete our Laplace approximation. Also, it is clear from eq. \eqref{eq:qParamVariational} that a maximum of $q(\pp)$ (a mode) is equal to a maximum of $\Va(\Po,\pp)$, because the exponential function is monotonically increasing. Hence, Friston suggests to maximise $\Va(\Po,\pp)$ instead of directly maximising $\Fa(\Po)$. At this point it is instructive to remember that the interpretation of the two optimisations is different. We maximise $\Fa(\Po)$ directly with respect to the posterior mode $\bgs{\mu}_\sp$ which was possible because of the Laplace approximation for both states and parameters. On the other hand, we maximise $\Va(\Po,\pp)$ with respect to the parameters used in the model $\pp$ in order to find a posterior mode $\bgs{\mu}_\sp$ based on a Laplace approximation around the posterior mode of the states only. Notice that this approach makes no assumptions about the form of $q(\pp)$ while we assumed a Gaussian $q(\pp)$ in deriving $\Fa(\Po)$.
+
+The first and second order gradients of $\Va(\Po,\pp)$ are
+\begin{align}
+    \Va_{\sp_i}(\Po,\pp) &= \label{eq:approxVarActionDp} \Ua_{\sp_i}(\Po,\bgs{\mu}_\Ps,\pp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}dt
+\end{align}
+\begin{align}
+    \Va_{\sp_i\sp_j}(\Po,\pp) &= \label{eq:approxVarActionDpp} \Ua_{\sp_i\sp_j}(\Po,\bgs{\mu}_\Ps,\pp) + \frac{1}{2}\int_0^T \trace{\U_{\ps(t)\ps(t)\sp_i\sp_j}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}dt.
+\end{align}
+Therefore, this approach saves us the computation of $\frac{1}{2}\trace{\Ua_{\pp\pp\sp_i}(\Po,\bgs{\mu}_\Ps,\bgs{\mu}_\sp)\Cov^\sp}$ in the first order gradients (compare eqs. \ref{eq:approxFreeActionDp} and \ref{eq:approxVarActionDp}) and also considerably simplifies computation of the second order gradients. 
+
+Shouldn't both approaches lead to a mode $\bgs{\mu}_\sp$ which maximises $\Fa(\Po)$? Eventually, i.e., after iterating between optimising for $\bgs{\mu}_\sp$ and optimising for $\bgs{\mu}_\Ps$, we guess, yes, but this is hard to see from these equations. We do note, though, that optimising $\Fa(\Po)$ with respect to $\bgs{\mu}_\sp$ takes additionally the posterior uncertainty $\Cov^\sp$ of $\pp$ (which is a function of $\bgs{\mu}_\sp$) into account while this only enters in the computation of the posterior mode $\bgs{\mu}_\Ps$ in the variational approach. Potential advantages of this, e.g., in terms of better convergence properties, are unclear to us at this point.
+
+The computational advantage of optimising $\Va(\Po,\pp)$ instead of $\Fa(\Po)$ is greatest for the second order gradients where the complexity for computing all elements of $[\cdot]_{ij} = \trace{\U_{\ps(t)\ps(t)\sp_i\sp_j}(\po(t),\bgs{\mu}_{\ss(t)},\pp)\Cov^{\ss(t)}}$ is $O(n_\sp^2n_\ss^2)$. Nevertheless, 4th order gradients of $\Ua$ still need to be computed. We could radically reduce the computational costs further, if we ignore the mean-field terms of the variational approximation. Then, the gradients simply become
+\begin{align}
+    \Va_{\sp_i}(\Po,\pp) &= \Ua_{\sp_i}(\Po,\bgs{\mu}_\Ps,\pp)
+\end{align}
+\begin{align}
+    \Va_{\sp_i\sp_j}(\Po,\pp) &= \Ua_{\sp_i\sp_j}(\Po,\bgs{\mu}_\Ps,\pp)
+\end{align}
+and we would have reduced our variational problem to a simple maximum a posteriori optimisation to find the mode of our approximated posterior density $q(\pp)$. In this case, the only computational complexity left would be the cost of computing the first and second order gradients of $\Ua$. This is actually what would usually be understood as the Laplace approximation: find the MAP estimate for $\pp$ and then simply put a Gaussian around it based on the local curvature of $\Ua$ (cf. eq. \eqref{eq:postCovParam}). Of course, when using this approach, we would ignore the uncertainty of the states and the result would not be a solution which optimises the approximated free action $\Fa(\Po)$ anymore. On the other hand, this may still be a viable approach when the uncertainties are low such that the mean-field terms contribute only little to the optimisation.
+
+In conclusion, we have presented three approaches to finding an approximated posterior mode of parameters $\bgs{\mu}_\sp$ which, for the benefit of decreasing computational costs, take decreasing amounts of information about posterior uncertainty of states and parameters into account.
+
+
+\section{Following the Posterior Mode of the States}
 
 
 
