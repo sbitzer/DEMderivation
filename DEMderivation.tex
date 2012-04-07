@@ -38,6 +38,7 @@
   \newcommand{\sh}{x}         % scalar hidden variable
   \newcommand{\st}{s}         % scalar combined state variable
   \newcommand{\spe}{\epsilon} % scalar prediction error
+  \newcommand{\spm}{\mu}    % scalar posterior mode
   \newcommand{\sog}{\gc{\so}}         % scalar observed variable generalised
   \newcommand{\szg}{\gc{\sz}}         % scalar state variable generalised
   \newcommand{\svg}{\gc{\sv}}         % scalar output variable generalised
@@ -50,12 +51,15 @@
   \newcommand{\ph}{\bs{\sh}}    % vector hidden variable
   \newcommand{\pt}{\bs{\st}}     % vector combined state variable
   \newcommand{\ppe}{\bgs{\spe}} % vector prediction error
+  \newcommand{\ppm}{\bgs{\spm}}   % vector posterior mode
   \newcommand{\psg}{\gc{\ps}}    % vector  time dependent (state) variable generalised
   \newcommand{\pzg}{\gc{\pz}}    % vector state variable generalised
   \newcommand{\pvg}{\gc{\pv}}    % vector output variable generalised
   \newcommand{\ptg}{\gc{\pt}}     % vector combined state variable generalised
   \newcommand{\pog}{\gc{\po}}    % vector observed variable generalised
+  \newcommand{\phg}{\gc{\ph}}    % vector hidden variable generalised
   \newcommand{\ppeg}{\gc{\ppe}} % vector prediction error
+  \newcommand{\ppmg}{\gc{\ppm}} % vector posterior mode generalised
   \newcommand{\pp}{\bgs{\sp}} % vector parameter
   \newcommand{\Ps}{\bs{U}}    % matrix  time dependent (state) variable
   \newcommand{\Po}{\bs{Y}}    % matrix observed variable
@@ -86,12 +90,15 @@
 \begin{document}
 
 \maketitle
-\tableofcontents
 
 \begin{abstract}
+In recent years Karl Friston has prominantly promoted his idea of free energy in the neurosciences. Although there it is highly received, many more technically minded scientists are a bit astranged, because his technical arguments are hard, or impossible, to follow.
 
+Friston's free energy principle has two sides: 1) filtering for estimating hidden states in a hierarchical model and 2) control by performing actions which minimise the discrepancy between expectations and observations. In more general terms we can call these 1) perception and 2) action. Here, we want to shed some light on the technical details of 1). These have been presented in \cite{Friston2008a,Friston2008} in the difficult Fristonian way. We will try to fill in the gaps while maintaining a consistent mathematical formulation. As this is partly an interpretation of the Fristonian descriptions we do not guarantee to represent his ideas completely, but we hope to provide a formulation which is more accessible to mathematically minded researchers. Also, this report should be seen as a work-in-progress and possible corrections and clarifications are welcome.
 \end{abstract}
 
+\newpage
+\tableofcontents
 
 \section{Nonlinear Gaussian Dynamic Models}
 Whatever function is used in the end to find the posterior mode, all corresponding gradients are computed from the gradients of $\Ua$. So it is time to look at the structure of $\Ua$. Notice that from here on subscripts of variables or functions are used solely to identify different variables or functions, or to index into matrices and vectors. Partial derivatives are written out in the standard format. While this clutters the formulae more, it helps us to make them conceptually clearer.
@@ -163,7 +170,7 @@ Equivalently, we can now define the state transition probability in generalised 
     &= -\frac{1}{2}\ppeg_\ss^\tr\gc{\bgs{\Pi}}^{\ss}\ppeg_\ss + c
 \end{align}
 where $\D$ is a differential operator which shifts the corresponding generalised coordinates up by one coordinate such that
-\eq{
+\eq{\label{eq:derivativeOperator}
     \D\psg = \left[\begin{array}{c} \dot{\ps}\\ \ddot{\ps}\\ \vdots \end{array}\right].
 }
 We can now identify $p(\D\psg(t)|\gc{\bs{f}}(t),\pp)$ with $p(\ps(t)|\vec{\ps}(t),\pp)$ from eq. \eqref{eq:statePrior}. Thus a full probabilistic model would integrate over $\gc{\bs{f}}(t)$:
@@ -559,7 +566,63 @@ In conclusion, we have presented three approaches to finding an approximated pos
 
 
 \section{Following the Posterior Mode of the States}
+We now come to the core of Friston's approach to filtering. We believe that his derivation based on an ensemble of particles is confusing and unnecessary. We will ignore it and take a more direct approach. The main idea is the following: View finding the mode of a distribution as gradient ascent in a dynamical system, extend this to the case where the mode underlies a constant drift and show that a representation in generalised coordinates can estimate that drift.
 
+Before, we have seen that the variational posterior is a function of the variational energy, i.e., holding $q(\pp)$ fixed, the approximated posterior for the states at time $t$ is (\todo this needs to be shown for $\ps(t)$ cf. $\Ps$)
+\eq{
+    q(\ps(t)) = \frac{1}{Z^{\ss(t)}}\exp\left(\V(\Po,\ps(t)) \right).
+}
+Let us now replace the time-varying $\ps(t)$ with a variable which is constant across time: $\ps(t)=\ph$
+\eq{
+    q(\ph) = \frac{1}{Z^{\sh}}\exp\left(\V(\Po,\ph) \right).
+}
+Hence, a mode of $q(\ph)$ is also a maximum of $\V(\Po,\ph)$. One way of finding such a maximum is to do gradient ascent on $\V$ which may be formulated in continuous time as
+\eq{\label{eq:dynGradientAscent}
+    \frac{\ud \ph}{\ud t'} = \ph' = \pd{\V(\Po,\ph)}{\ph}.
+}
+To make this explicit: this dynamical system will follow the gradient of $\V$ until it reaches a maximum of $\V$ (equal to $\ppm_{\ss(t)}$) at which $\ph'=0$, i.e., maxima of $\V$ are stable fixed points of this dynamical system while minima are unstable fixed points. Notice that this dynamical system operates in a different time frame $t'$ than the real time $t$ above. In other words, in the new time frame the posterior mode $\ppm_{\ss(t)}$ is constant. This is obviously wrong. So we introduce a drift variable $\ph'^*$ which is constant in the frame of $t'$ and is supposed to represent the change of the posterior mode in real time $t$
+\eq{
+    \ph' = \pd{\V(\Po,\ph)}{\ph} + \ph'^*.
+}
+The difference between the time frames is only a theoretical construct, because they actually evolve simultaneously. Hence, when we are at a maximum of $\V$ with $\ph=\ppm_{\ss(t)}$
+\eq{
+    \ph' = \ph'^*,
+}
+i.e., the change in $\ph$ actually tracks the change in the posterior mode $\ppm_{\ss(t)}$, if we can ensure that $\ph'^* = \dot{\ppm}_{\ss(t)}$. The trick now is to use generalised coordinates to simultaneously approximate $\ppm_{\ss(t)}$ and $\dot{\ppm}_{\ss(t)}$. We do this by setting up two (or more) simultaneous dynamical systems:
+\begin{align}
+    \label{eq:generalisedpostmodepos} \ph' &= \pd{}{\ph}\V(\Po,\ph,\ph',\dots) + \ph'^*\\
+    \label{eq:generalisedpostmodevel} \ph'' &= \pd{}{\ph'}\V(\Po,\ph,\ph',\dots) + \ph''^*\\
+    \vdots \nonumber
+\end{align}
+where we define $\ph'' = \ud \ph' / \ud t''$ and denote the current state of the dynamical system defined by $\ph''$ in eq. \eqref{eq:generalisedpostmodevel} as $\ph'^*$ to differentiate it from $\ph'$ in eq. \eqref{eq:generalisedpostmodepos} (similarly for higher order generalised coordinates). Now remember that (in our new notation) $\ph^* = \ps(t)$ and correspondingly $\ph'^* = \dot{\ps}(t)$. We also know that the dynamical systems for $\ph'$ and $\ph''$ converge to $\ppm_{\ss(t)}$ and $\dot{\ppm}_{\ss(t)}$, respectively, when the contribution from the higher order coordinates is ignored. Hence, $\ph'^* = \dot{\ppm}_{\ss(t)}$ after convergence and will provide the drift of the posterior mode (which may be influenced by the drift of the drift of the posterior mode as estimated by the next higher coordinate, and so on). 
+
+It is possible to write these equations more compactly by using generalised coordinate notation:
+\eq{\label{eq:Dstepdynamics}
+    \dot{\phg} = \pd{\V(\Po,\phg)}{\phg} + \D\phg
+}
+where $\D$ is the matrix derivative operator which shifts coordinates up as defined in eq. \eqref{eq:derivativeOperator}. Note that all the dynamical systems now are formulated in a common time frame again. This does not change anything, because we only introduced the different time frames as an aid to understand the working of the combined system. But does the combined dynamical system now actually converge to $\ppmg_{\ss(t)}$? Friston provides a linear stability analysis around the posterior mode $\ppmg_{\ss(t)}$. This does not add much to what we already know from the previous considerations, but for completeness we repeat it anyway:
+
+Make a first-order Taylor approximation of the variational energy gradient around the mode
+\eq{\begin{split}
+    \pd{\V(\Po,\phg)}{\phg} &= \pd{\V(\Po,\ppmg_{\ss(t)})}{\phg} + (\phg - \ppmg_{\ss(t)})^\tr \ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg}\\
+    &= \pd{\V(\Po,\ppmg_{\ss(t)})}{\phg} + \bgs{\varepsilon}^\tr \ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg}\\
+    &=\bgs{\varepsilon}^\tr \ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg}
+\end{split}}
+where we have used $\pd{\V(\Po,\phg)}{\phg} = 0$ for $\phg = \ppmg_{\ss(t)}$ on the last line. Plug into eq. \eqref{eq:Dstepdynamics}
+\eq{\begin{split}
+    \dot{\phg} &= \bgs{\varepsilon}^\tr \ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg} + \D\phg\\
+   &= \bgs{\varepsilon}^\tr \ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg} + \D (\bgs{\varepsilon} + \ppmg_{\ss(t)}).
+\end{split}}
+Use $\dot{\ppmg}_{\ss(t)} = \D\ppmg_{\ss(t)}$
+\begin{align}
+    \dot{\phg} &= \bgs{\varepsilon}^\tr \ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg} + \D\bgs{\varepsilon} + \dot{\ppmg}_{\ss(t)}\\
+    \dot{\bgs{\varepsilon}} &= \bgs{\varepsilon}^\tr \ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg} + \D\bgs{\varepsilon}\\
+    &= \left(\left[\ppd{\V(\Po,\ppmg_{\ss(t)})}{\phg}{\phg}\right]^\tr + \D\right) \bgs{\varepsilon}\\
+    &= \left(\V_{\phg\phg}^\tr + \D\right) \bgs{\varepsilon}
+\end{align}
+The resulting dynamical system of the difference between $\phg$ and the posterior mode $\bgs{\varepsilon} = \phg - \ppmg_{\ss(t)}$ is a simple linear system which converges to $\bs{0}$ exponentially fast as long as $\V_{\phg\phg}^\tr + \D$ is negative definite. We know that $\V_{\phg\phg}$ has a negative effect, because we are close to a maximum of $\V(\Po,\phg)$ and the curvature there is negative. Hence, whether $\phg$ converges to $\ppmg_{\ss(t)}$ depends on whether $\V_{\phg\phg}$ dominates over $\D$. Friston suggests to scale $\V_{\phg\phg}$ by a constant to ensure that the contribution of $\V_{\phg\phg}$ is sufficiently large, but notes that this was unnecessary in their experience. Overall this analysis provides little more information than our original insight that the dynamical system in eq. \eqref{eq:dynGradientAscent} converges to $\ppm_{\ss(t)}$.
+
+In summary, the main filtering equation in Friston's DEM is eq. \eqref{eq:Dstepdynamics}. For a static system the solution of the variational approximation ensures that the dynamical system defined by eq. \eqref{eq:Dstepdynamics} converges to a mode of the variational posterior distribution. In a dynamic setting, where this mode moves itself, the representation in generalised coordinates ensures that the whole movement of the mode is estimated. The differential term $\D\phg$ is important, because it ensures that the estimate of the mode in one coordinate has the appropriate effect for tracking the mode in the next lower-order coordinate (e.g. the estimated velocity of the mode is taken into account when tracking the mode itself given an observation). 
 
 
 \section{Discretisation}
