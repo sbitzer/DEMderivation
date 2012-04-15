@@ -155,9 +155,6 @@ This can also be applied to functions which depend on time-varying variables
 where we have assumed that $f$ and $g$ are locally linear with respect to $\ps$. 
 
 
-\subsection{Covariances in Generalised Coordinates}
-
-
 \subsection{Dynamic Model in Generalised Coordinates}
 It is then possible to redefine the observation density in generalised coordinates and obtain
 \begin{align}
@@ -186,6 +183,34 @@ such that
     \E[p(\gc{\bs{f}}(t)|\vec{\Po}(t),\pp)]{p(\D\psg(t)|\gc{\bs{f}}(t),\pp)} \approx p(\D\psg(t)|\gc{\bgs{\mu}}_{\gc{f}}(t),\pp).
 }
 This approximation has an important impact on the inference. It means that state uncertainty is not propagated through time, i.e., the posterior covariances of the states only depend on the prior covariances $\gc{\bgs{\Psi}}^\ss$ and $\gc{\bgs{\Psi}}^\so$ and on the corresponding functions $f$ and $g$. On the one hand, this prevents the divergence of state uncertainty over time through accumulation of errors. On the other hand, it also prevents posterior uncertainty to decrease, for example, when the dynamics prescribed by the model can be followed accurately over an extended period of time. In any case, it makes the posterior covariances of the states purely instantaneous measures of uncertainty which do not necessarily reflect the true uncertainties accumulated over time.
+
+
+\subsection{Generalised Covariances}
+We used "generalised covariances" to define the Gaussian densities above, i.e., we introduced covariances for the representations in generalised coordinates. To this point, it is still unclear to us how Friston derived his formula for computing generalised covariances. However, this is central to the definition of his probabilistic model as it defines what kind of stochastic process he assumes. We now state what he suggests and comment on his equations as far as we understand them. 
+
+He defines generalised covariances as\footnote{Friston actually defines generalised precisions instead of generalised covariances, but this turns out the same, because $(\bs{A}\otimes\bs{B})^{-1} = \bs{A}^{-1}\otimes\bs{B}^{-1}$, if $\bs{A}$ and $\bs{B}$ are invertible.}
+\eq{
+    \gc{\bgs{\Psi}} = \bs{S}(\gamma) \otimes \bgs{\Psi}
+}
+where $\bs{S}(\gamma)$ is a potentially infinitely large (depending on the number of considered generalised coordinates) matrix which translates an assumed covariance for a state $\ps$ $\bgs{\Psi}$ to the covariances for its generalised coordinates $\dot{\ps}, \ddot{\ps}, \dots$ by scaling (and mixing) $\bgs{\Psi}$. Friston states that the "temporal covariance" $\bs{S}(\gamma)$ can be written as
+\eq{
+    \bs{S}(\gamma) = \left[\begin{array}{cccc} 1 & 0 & \ddot{\rho}(0) & \cdots\\
+0 & - \ddot{\rho}(0) & 0 &\\
+ \ddot{\rho}(0) & 0 & \ddot{\ddot{\rho}}(0) & \\
+\vdots & & & \ddots
+\end{array}\right]
+}
+where $\rho(\Delta t)$ is the autocorrelation function of the noise and $\ddot{\rho}(0)$ its second derivative with respect to time evaluated at $\Delta t = 0$. The origin of this relationship is a mystery to us. That $\rho$ only has a single argument hints at the assumption of a stationary noise process, but the derivative of the corresponding autocorrelation function with respect to time should be 0 then, because it would not change with time. Friston further states that, if $\rho$ is a Gaussian with variance $\gamma$, then
+\eq{
+    \bs{S}(\gamma) = \left[\begin{array}{cccc} 1 & 0 & -\frac{1}{2\gamma} & \cdots\\
+0 & \frac{1}{2\gamma} & 0 &\\
+-\frac{1}{2\gamma} & 0 & \frac{3}{4\gamma^2} & \\
+\vdots & & & \ddots
+\end{array}\right],
+}
+but the elements of $\bs{S}(\gamma)$ here are certainly not the derivatives of a Gaussian. 
+
+Consequently, we are tapping completely in the dark when trying to interpret generalised covariances. Why, for example, does a state only covary with every second of its generalised coordinates (cf. nonzero entries in $\bs{S}(\gamma)$)? We can only say for sure that the generalised covariance increases for higher order coordinates as long as $\gamma$ is small enough. In his code, Friston sets $\gamma = 1/4$ by default which means that the generalised covariances quickly become so large for higher order coordinates that these coordinates become completely uninformative and considering more than 6, or so, is a waste of computing time.
 
 
 \subsection{Internal Action of Dynamic Model}
