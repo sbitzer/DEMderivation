@@ -31,7 +31,7 @@
 \newcommand{\trace}[1]{\mathrm{Tr}\left(#1\right)}					% trace
 
 \newcommand{\gc}[1]{\tilde{#1}} % generalised coordinates
-\renewcommand{\ss}{u}         % scalar time dependent (state) variable
+\renewcommand{\ss}{z}         % scalar time dependent (state) variable
   \newcommand{\sz}{z}         % scalar state variable
   \newcommand{\sv}{v}         % scalar output variable
   \newcommand{\so}{y}         % scalar observed variable
@@ -61,7 +61,7 @@
   \newcommand{\ppeg}{\gc{\ppe}} % vector prediction error
   \newcommand{\ppmg}{\gc{\ppm}} % vector posterior mode generalised
   \newcommand{\pp}{\bgs{\sp}} % vector parameter
-  \newcommand{\Ps}{\bs{U}}    % matrix  time dependent (state) variable
+  \newcommand{\Ps}{\bs{Z}}    % matrix  time dependent (state) variable
   \newcommand{\Po}{\bs{Y}}    % matrix observed variable
   \newcommand{\Pv}{\bs{V}}    % matrix output variable
   \newcommand{\Ph}{\bs{X}}    % matrix hidden variable
@@ -80,6 +80,7 @@
 \newcommand{\Fa}{\bar{\mathcal{F}}}		% approximated free action
 \newcommand{\R}{\mathbb{R}}				% real numbers
 \newcommand{\Cov}{\bgs{\Sigma}}			% covariance
+\newcommand{\Prec}{\bgs{\Pi}}			% precision
 \renewcommand{\det}[1]{\mathrm{det}(#1)}	% determinant
 %\renewcommand{\det}[1]{|#1|}	% determinant
 
@@ -94,13 +95,61 @@
 \begin{abstract}
 In recent years Karl Friston has prominantly promoted his idea of free energy in the neurosciences. Although there it is highly received, many more technically minded scientists are a bit astranged, because his technical arguments are hard, or impossible, to follow.
 
-Friston's free energy principle has two sides: 1) filtering for estimating hidden states in a hierarchical model and 2) control by performing actions which minimise the discrepancy between expectations and observations. In more general terms we can call these 1) perception and 2) action. Here, we want to shed some light on the technical details of 1). These have been presented in \cite{Friston2008a,Friston2008} in the difficult Fristonian way. We will try to fill in the gaps while maintaining a consistent mathematical formulation. As this is partly an interpretation of the Fristonian descriptions we do not guarantee to represent his ideas completely, but we hope to provide a formulation which is more accessible to mathematically minded researchers. Also, this report should be seen as a work-in-progress and possible corrections and clarifications are welcome.
+Friston's free energy principle has two sides: 1) filtering for estimating hidden states in a hierarchical model and 2) control by performing actions which minimise the discrepancy between expectations and observations. In more general terms we can call these 1) perception and 2) action. Here, we want to shed some light on the technical details of 1). These have been presented in \cite{Friston2008a,Friston2008} in the difficult Fristonian way. We will try to fill in the gaps while maintaining a consistent mathematical formulation. As this is partly an interpretation of the Fristonian descriptions we do not guarantee to represent his ideas completely, but we hope to provide a formulation which is more accessible to mathematically minded researchers. Also, this report should be seen as a work-in-progress where the date listed on the title page acts as a version number.
+
+We neither want to praise nor discard Friston's ideas. Rather, we aim to provide a consistent clarification of the technical background which is as objective as possible.
 \end{abstract}
 
 \newpage
 \tableofcontents
+\newpage
 
-\section{Nonlinear Gaussian Dynamic Models}
+\section{Introduction and Notation}
+Throughout this report we try to maintain a maximally consistent notation. This is made difficult by the large amount of variables and their different, but interrelated meanings. Here we define the basic notation with reference to subsequent sections where the corresponding variables are first introduced. We use matrix notation as shown in Tab. \ref{tab:matrixnot}, but also use subscripts to differentiate different variables which do not necessarily belong to a common matrix. It should be clear from the context which notation is used. 
+
+\begin{table}
+\begin{tabular}{ll}
+$x \in \R$ & scalar\\
+$\bs{x} \in \R^{m\times 1}$ & column vector\\
+$x_i \in \R$ & $i$-th element of vector $\bs{x}$\\
+$\bs{X} \in \R^{m\times n}$ & matrix\\
+$\bs{x}_j = \bs{x}_{:,j} \in \R^{m\times 1}$ & $j$-th column of matrix $\bs{X}$\\
+$\bs{x}_{i,:} \in \R^{1\times n}$ & $i$-th row of matrix $\bs{X}$\\
+$x_{ij}\in \R$ & element in $i$-th row and $j$-th column of matrix $\bs{X}$
+\end{tabular}
+\caption{matrix notation}
+\label{tab:matrixnot}
+\end{table}
+
+Following Friston we only consider Gaussian distributions and denote that the multidimensional random variable $\bs{x}$ is distributed according to a multivariate Gaussian distribution as $\bs{x} \sim \N(\bgs{\mu}, \Cov)$ where $\bgs{\mu}$ is the mean vector, $\Cov$ the covariance matrix and $\Prec = \Cov^{-1}$ the precision. The corresponding probability density function is
+\eq{
+    p(\bs{x}|\bgs{\mu},\Cov) = \frac{1}{\sqrt{\det{2\pi \Cov}}}\exp\left( -\frac{1}{2}(\bs{x} - \bgs{\mu})^\tr\Cov^{-1} (\bs{x} - \bgs{\mu}) \right)
+}
+which we may also write as
+\eq{
+    p(\bs{x}|\bgs{\mu},\Cov) = \frac{1}{Z(\Cov)}\exp\left( -\frac{1}{2}\ppe^\tr\Prec \ppe \right)
+}
+where we have defined the 'prediction error' $\ppe = \bs{x} - \bgs{\mu}$.
+
+In this report we consider hierarchical dynamic models represented in continuous time. However, most people find it easier to think of dynamic (probabilistic) models in discrete time. We therefore think that it is instructive to start with a discrete time representation and see how Friston's continuous time dynamic models relate to that. Fig. \ref{fig:graphicalModel} depicts a discrete time hierarchical dynamic model and introduces some of the variables we consider. In particular, we denominate observed variables at the bottom of the hierarchy as $\po$. These only depend on the hidden, time-dependent state variables $\ps^1$ in the first level which in turn depend on output variables of the 2nd level $\pv^2$ which result from dynamics defined on state variables $\ps^2$ and so on (see also Sec. \ref{sec:hierarchy}).
+
+\begin{figure}
+    \centering
+    \input{graphicalModel.pdf_tex}
+    \label{fig:graphicalModel}
+    \caption{Incomplete 2-level graphical model in discrete time. Observed variables are shaded. Here we let the output of one level influence the dynamics on the level below only in the next time step, but it is equally conceivable that the effect from one level to the other is immediate which also corresponds to the situation in continuous time where time steps are infinitesimally small.}
+\end{figure}
+
+Most of the theoretical concepts treated in this report do not depend on hierarchical models. Hence, we mostly consider only a single level with observations $\po$ and dynamic hidden states $\ps$. For linear dynamical systems for which
+\eq{
+    \ps_t = \bs{A}\ps_{t-1} + \bgs{\varepsilon}_{t},
+}
+where $\bgs{\varepsilon}_{t}$ is Gaussian noise, the Kalman filter can be applied to infer hidden states $\ps$ from observations $\po$. Friston's DEM has the same aim, but it is formulated in continuous time, for nonlinear dynamical systems and additionally considers learning of the model parameters which we usually denote as $\pp$.
+
+This report is structured as follows: First, we introduce Friston's continuous time dynamic probabilistic models and explain his generalised coordinates. Then, we consider what Friston calls the 'internal action' of a model which is, roughly, the integrated joint data-hidden state log-probability whose gradients are used for state inference and learning. We then get to Friston's variational approximation which separates inference of hidden time-dependent states from that of constant parameters (learning) and introduce the Laplace approximation used to compute the expectations over the inferred state posteriors. Subsequently, we derive the optimisation problem used to solve parameter learning. In Sec. \ref{sec:filtering} we discuss the resulting filter algorithm and explain how generalised coordinates improve its performance. We close by considering implementational issues such as discretisation.
+
+
+\section{Nonlinear Gaussian Dynamic Models in Continuous Time}
 Whatever function is used in the end to find the posterior mode, all corresponding gradients are computed from the gradients of $\Ua$. So it is time to look at the structure of $\Ua$. Notice that from here on subscripts of variables or functions are used solely to identify different variables or functions, or to index into matrices and vectors. Partial derivatives are written out in the standard format. While this clutters the formulae more, it helps us to make them conceptually clearer.
 
 First, remember that (eq. \ref{eq:intAction})
@@ -110,7 +159,7 @@ First, remember that (eq. \ref{eq:intAction})
 The parameter prior, as all other model densities, is chosen to be Gaussian $p(\pp)\sim \N(\bgs{\eta}_\sp,\bgs{\Psi}^\sp)$ such that 
 \begin{align}
     \log p(\pp) &= -\frac{1}{2}(\pp - \bgs{\eta}_\sp)^\tr\bgs{\Psi}^{\sp^{-1}}(\pp - \bgs{\eta}_\sp) + c\\
-    &= -\frac{1}{2}\ppe_\sp^\tr\bgs{\Pi}^{\sp}\ppe_\sp + c
+    &= -\frac{1}{2}\ppe_\sp^\tr\Prec^{\sp}\ppe_\sp + c
 \end{align}
 where we have lumped terms from the normalisation constant of the Gaussian distribution into the constant $c$ and introduced Friston's prediction error - precision formulation in the second line.
 
@@ -123,7 +172,7 @@ where $\vec{\Po}(t)$ is all data observed previous to time $t$.
 The observation density $p(\po(t)|\ps(t),\pp)$ can be defined in a straightforward way based on an output nonlinearity with additive zero-mean Gaussian noise: $g(\ps(t),\pp)+\bgs{\omega}_\so$, $\bgs{\omega}_\so\sim \N(\bs{0},\bgs{\Psi}^\so)$ such that
 \begin{align}
     \log p(\po(t)|\ps(t),\pp) &= -\frac{1}{2}(\po(t) - g(\ps(t),\pp))^\tr\bgs{\Psi}^{\so^{-1}}(\po(t) - g(\ps(t),\pp)) + c\\
-    &= -\frac{1}{2}\ppe_\so^\tr\bgs{\Pi}^{\so}\ppe_\so + c.
+    &= -\frac{1}{2}\ppe_\so^\tr\Prec^{\so}\ppe_\so + c.
 \end{align}
 The prior $p(\ps(t)|\vec{\Po}(t),\pp)$ is most generally defined as
 \eq{
@@ -159,12 +208,12 @@ where we have assumed that $f$ and $g$ are locally linear with respect to $\ps$.
 It is then possible to redefine the observation density in generalised coordinates and obtain
 \begin{align}
     \log p(\pog(t)|\gc{\bs{g}}(t),\pp) &= -\frac{1}{2}(\pog(t) - \gc{\bs{g}}(\psg(t),\pp))^\tr\gc{\bgs{\Psi}}^{\so^{-1}}(\pog(t) - \gc{\bs{g}}(\psg(t),\pp)) + c\\
-    &= -\frac{1}{2}\ppeg_\so^\tr\gc{\bgs{\Pi}}^{\so}\ppeg_\so + c.
+    &= -\frac{1}{2}\ppeg_\so^\tr\gc{\Prec}^{\so}\ppeg_\so + c.
 \end{align}
 Equivalently, we can now define the state transition probability in generalised coordinates based on the differential equation with additive Gaussian noise $\D\psg(t) = \gc{\bs{f}}(\psg(t),\pp)+\gc{\bgs{\omega}}_\ss$, $\gc{\bgs{\omega}}_\ss\sim \N(\bs{0},\gc{\bgs{\Psi}}^\ss)$ to get
 \begin{align}
     \log p(\D\psg(t)|\gc{\bs{f}}(t),\pp) &= -\frac{1}{2}(\D\psg(t) - \gc{\bs{f}}(\psg(t),\pp))^\tr\gc{\bgs{\Psi}}^{\ss^{-1}}(\psg(t) - \gc{\bs{f}}(\psg(t),\pp)) + c\\
-    &= -\frac{1}{2}\ppeg_\ss^\tr\gc{\bgs{\Pi}}^{\ss}\ppeg_\ss + c
+    &= -\frac{1}{2}\ppeg_\ss^\tr\gc{\Prec}^{\ss}\ppeg_\ss + c
 \end{align}
 where $\D$ is a differential operator which shifts the corresponding generalised coordinates up by one coordinate such that
 \eq{\label{eq:derivativeOperator}
@@ -217,14 +266,14 @@ Consequently, we are tapping completely in the dark when trying to interpret gen
 To summarise, we can now rewrite the internal action in terms of prediction errors and precisions
 \begin{align}
     \Ua(\Po,\Ps,\pp) &= \log p(\pp) + \int_0^T \log p(\pog(t),\psg(t)|\pp)dt\nonumber\\
-    &= C - \frac{1}{2}\left(\ppe_\sp^\tr\bgs{\Pi}^{\sp}\ppe_\sp + \int_0^T \ppeg_\so^\tr(t)\gc{\bgs{\Pi}}^{\so}\ppeg_\so(t) + \ppeg_\ss^\tr(t)\gc{\bgs{\Pi}}^{\ss}\ppeg_\ss(t)  dt\right)
+    &= C - \frac{1}{2}\left(\ppe_\sp^\tr\Prec^{\sp}\ppe_\sp + \int_0^T \ppeg_\so^\tr(t)\gc{\Prec}^{\so}\ppeg_\so(t) + \ppeg_\ss^\tr(t)\gc{\Prec}^{\ss}\ppeg_\ss(t)  dt\right)
 \end{align}
 with 
 \begin{align}
-    C &= \frac{1}{2}\log\det{\bgs{\Pi}^{\sp}} - \frac{n_\sp}{2}\log 2\pi\nonumber\\
-    &\quad + \frac{1}{2} \int_0^T \log\det{\gc{\bgs{\Pi}}^{\so}} + \log\det{\gc{\bgs{\Pi}}^{\ss}} - (n_\so + n_\ss)\log 2\pi dt\\
-    &= \frac{1}{2}\log\det{\bgs{\Pi}^{\sp}} - \frac{n_\sp}{2}\log 2\pi\nonumber\\
-    &\quad + \frac{T}{2} \left( \log\det{\gc{\bgs{\Pi}}^{\so}} + \log\det{\gc{\bgs{\Pi}}^{\ss}} - (n_\so + n_\ss)\log 2\pi \right)
+    C &= \frac{1}{2}\log\det{\Prec^{\sp}} - \frac{n_\sp}{2}\log 2\pi\nonumber\\
+    &\quad + \frac{1}{2} \int_0^T \log\det{\gc{\Prec}^{\so}} + \log\det{\gc{\Prec}^{\ss}} - (n_\so + n_\ss)\log 2\pi dt\\
+    &= \frac{1}{2}\log\det{\Prec^{\sp}} - \frac{n_\sp}{2}\log 2\pi\nonumber\\
+    &\quad + \frac{T}{2} \left( \log\det{\gc{\Prec}^{\so}} + \log\det{\gc{\Prec}^{\ss}} - (n_\so + n_\ss)\log 2\pi \right)
 \end{align}
 which may potentially depend on $\pp$ and
 \begin{align}
@@ -236,6 +285,7 @@ where we have equated $\gc{\bgs{\mu}}_{\gc{f}}=\gc{\bs{f}}$.
 
 
 \subsection{Hierarchy}
+\label{sec:hierarchy}
 So far we have only considered flat models, but a generalisation to deep, i.e., hierarchical, dynamical models is straightforward. To achieve this we make the model functions on one level depend on the output of the level above. In particular, the model becomes
 \eq{\begin{array}{cc}
     \pog(t) = \gc{\bs{g}}^1(\psg^1(t),\pvg^2(t),\pp) + \gc{\bgs{\omega}}_\so & \D\psg^1(t) = \gc{\bs{f}}^1(\psg^1(t),\pvg^2(t),\pp)+\gc{\bgs{\omega}}_{\ss}^1\\
@@ -253,13 +303,13 @@ Because the noise in each level is independent from the noise in the other level
 \end{align}
 where we have introduced the prior probability $p(\pvg^{L+1}(t)) \sim \N(\gc{\bgs{\eta}}_{\sv^{L+1}},\gc{\bgs{\Psi}}^{\sv^{L+1}})$. All other distributions remain Gaussian, too, such that we get
 \begin{align}\label{eq:intActionHier}
-    \Ua(\Pv,\Ps,\pp) &= C^h  - \frac{1}{2}\ppe_\sp^\tr\bgs{\Pi}^{\sp}\ppe_\sp - \frac{1}{2}\int_0^T \ppeg_{\sv^{L+1}}^\tr(t)\gc{\bgs{\Pi}}^{\sv^{L+1}}\ppeg_{\sv^{L+1}}(t)\nonumber\\
-    &\qquad + \sum_{l=1}^L \ppeg_{\sv^l}^\tr(t)\gc{\bgs{\Pi}}^{\sv^l}\ppeg_{\sv^l}(t) + \ppeg_{\ss^l}^\tr(t)\gc{\bgs{\Pi}}^{\ss^l}\ppeg_{\ss^l}(t)  dt
+    \Ua(\Pv,\Ps,\pp) &= C^h  - \frac{1}{2}\ppe_\sp^\tr\Prec^{\sp}\ppe_\sp - \frac{1}{2}\int_0^T \ppeg_{\sv^{L+1}}^\tr(t)\gc{\Prec}^{\sv^{L+1}}\ppeg_{\sv^{L+1}}(t)\nonumber\\
+    &\qquad + \sum_{l=1}^L \ppeg_{\sv^l}^\tr(t)\gc{\Prec}^{\sv^l}\ppeg_{\sv^l}(t) + \ppeg_{\ss^l}^\tr(t)\gc{\Prec}^{\ss^l}\ppeg_{\ss^l}(t)  dt
 \end{align}
 with
 \begin{align}
-    C^h &= \frac{1}{2}\log\det{\bgs{\Pi}^{\sp}} + \frac{T}{2}\log\det{\gc{\bgs{\Pi}}^{\sv^{L+1}}} - \frac{n_\sp + Tn_{\sv^{L+1}}}{2}\log 2\pi\nonumber\\
-    &\quad + \frac{T}{2} \left( \sum_{l=1}^L \log\det{\gc{\bgs{\Pi}}^{\sv^l}} + \log\det{\gc{\bgs{\Pi}}^{\ss^l}} - (n_{\sv^l} + n_{\ss^l})\log 2\pi \right)
+    C^h &= \frac{1}{2}\log\det{\Prec^{\sp}} + \frac{T}{2}\log\det{\gc{\Prec}^{\sv^{L+1}}} - \frac{n_\sp + Tn_{\sv^{L+1}}}{2}\log 2\pi\nonumber\\
+    &\quad + \frac{T}{2} \left( \sum_{l=1}^L \log\det{\gc{\Prec}^{\sv^l}} + \log\det{\gc{\Prec}^{\ss^l}} - (n_{\sv^l} + n_{\ss^l})\log 2\pi \right)
 \end{align}
 and
 \begin{align}
@@ -276,22 +326,22 @@ and
 \subsubsection{Gradients with respect to Parameters}
 The gradients with respect to parameters obviously depend on what the parameters control. We for now stick with parameterising the functions $\gc{\bs{g}}^l$ and $\gc{\bs{f}}^l$ and consider learning of prior covariances later. Based on \citep[][eq. (85)]{Petersen2008} we get from eq. \eqref{eq:intActionHier}
 \begin{align}
-    \pd{\Ua(\Pv,\Ps,\pp)}{\pp} &= -\left(\pd{\ppe_\sp}{\pp}\right)^\tr\bgs{\Pi}^{\sp}\ppe_\sp - \int_0^T \sum_{l=1}^L \left(\pd{\ppeg_{\sv^l}(t)}{\pp}\right)^\tr\gc{\bgs{\Pi}}^{\sv^l}\ppeg_{\sv^l}(t)\nonumber\\
-    &\quad + \left(\pd{\ppeg_{\ss^l}(t)}{\pp}\right)^\tr\gc{\bgs{\Pi}}^{\ss^l}\ppeg_{\ss^l}(t)  dt
+    \pd{\Ua(\Pv,\Ps,\pp)}{\pp} &= -\left(\pd{\ppe_\sp}{\pp}\right)^\tr\Prec^{\sp}\ppe_\sp - \int_0^T \sum_{l=1}^L \left(\pd{\ppeg_{\sv^l}(t)}{\pp}\right)^\tr\gc{\Prec}^{\sv^l}\ppeg_{\sv^l}(t)\nonumber\\
+    &\quad + \left(\pd{\ppeg_{\ss^l}(t)}{\pp}\right)^\tr\gc{\Prec}^{\ss^l}\ppeg_{\ss^l}(t)  dt
 \end{align}
 The second order gradients should be of the form (considering a single parameter $\sp_i$ only)
 \begin{align}
-    \ppd{\frac{1}{2}\ppe_\sp^\tr\bgs{\Pi}^{\sp}\ppe_\sp}{\pp}{\sp_i} &= \pd{}{\sp_i}\left[\left(\pd{\ppe_\sp}{\pp}\right)^\tr\bgs{\Pi}^{\sp}\ppe_\sp\right]\nonumber\\
-    &= \left(\ppd{\ppe_\sp}{\pp}{\sp_i}\right)^\tr\bgs{\Pi}^{\sp}\ppe_\sp + \left(\pd{\ppe_\sp}{\pp}\right)^\tr\bgs{\Pi}^{\sp}\pd{\ppe_\sp}{\sp_i}.
+    \ppd{\frac{1}{2}\ppe_\sp^\tr\Prec^{\sp}\ppe_\sp}{\pp}{\sp_i} &= \pd{}{\sp_i}\left[\left(\pd{\ppe_\sp}{\pp}\right)^\tr\Prec^{\sp}\ppe_\sp\right]\nonumber\\
+    &= \left(\ppd{\ppe_\sp}{\pp}{\sp_i}\right)^\tr\Prec^{\sp}\ppe_\sp + \left(\pd{\ppe_\sp}{\pp}\right)^\tr\Prec^{\sp}\pd{\ppe_\sp}{\sp_i}.
 \end{align}
 However, Friston assumes local linearity such that the second order terms disappear and what remains is (now summarised for all parameters)
 \begin{align}
-    \ppd{\frac{1}{2}\ppe_\sp^\tr\bgs{\Pi}^{\sp}\ppe_\sp}{\pp}{\pp} &\approx \left(\pd{\ppe_\sp}{\pp}\right)^\tr\bgs{\Pi}^{\sp}\pd{\ppe_\sp}{\pp}.
+    \ppd{\frac{1}{2}\ppe_\sp^\tr\Prec^{\sp}\ppe_\sp}{\pp}{\pp} &\approx \left(\pd{\ppe_\sp}{\pp}\right)^\tr\Prec^{\sp}\pd{\ppe_\sp}{\pp}.
 \end{align}
 It would be interesting to know what the advantage is of assuming local linearity of the prediction errors compared to assuming local linearity of $\Ua$ directly, i.e., why not simply ignore second order gradients of $\Ua$ completely? We can test this in the implementation later on. Anyway, the second order gradients of $\Ua$ become
 \begin{align}
-    \ppd{\Ua(\Pv,\Ps,\pp)}{\pp}{\pp} &\approx -\left(\pd{\ppe_\sp}{\pp}\right)^\tr\bgs{\Pi}^{\sp}\pd{\ppe_\sp}{\pp} - \int_0^T \sum_{l=1}^L \left(\pd{\ppeg_{\sv^l}(t)}{\pp}\right)^\tr\gc{\bgs{\Pi}}^{\sv^l}\pd{\ppeg_{\sv^l}(t)}{\pp}\nonumber\\
-    &\quad + \left(\pd{\ppeg_{\ss^l}(t)}{\pp}\right)^\tr\gc{\bgs{\Pi}}^{\ss^l}\pd{\ppeg_{\ss^l}(t)}{\pp}  dt
+    \ppd{\Ua(\Pv,\Ps,\pp)}{\pp}{\pp} &\approx -\left(\pd{\ppe_\sp}{\pp}\right)^\tr\Prec^{\sp}\pd{\ppe_\sp}{\pp} - \int_0^T \sum_{l=1}^L \left(\pd{\ppeg_{\sv^l}(t)}{\pp}\right)^\tr\gc{\Prec}^{\sv^l}\pd{\ppeg_{\sv^l}(t)}{\pp}\nonumber\\
+    &\quad + \left(\pd{\ppeg_{\ss^l}(t)}{\pp}\right)^\tr\gc{\Prec}^{\ss^l}\pd{\ppeg_{\ss^l}(t)}{\pp}  dt
 \end{align}
 Notice that any higher order gradients of $\Ua$ with respect to parameters will be 0 under the local linearity assumption for the prediction errors. 
 
@@ -319,51 +369,51 @@ where we have introduced generalised coordinates and just replaced $\psg$ by $\p
 
 We are only interested in taking gradients with respect to the \emph{hidden} output variables of levels $l=\{2, \dots, L+1\}$ which are (from eq. \ref{eq:intActionHier})
 \begin{align}
-    \pd{\U(\pog(t),\ptg(t),\pp)}{\pvg^l(t)} &=  - \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\ppeg_{\sv^{l}}(t) - \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l-1}}\ppeg_{\sv^{l-1}}(t) \nonumber\\
-    &\quad - \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\ss^{l-1}}\ppeg_{\ss^{l-1}}(t).
+    \pd{\U(\pog(t),\ptg(t),\pp)}{\pvg^l(t)} &=  - \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\ppeg_{\sv^{l}}(t) - \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l-1}}\ppeg_{\sv^{l-1}}(t) \nonumber\\
+    &\quad - \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\ss^{l-1}}\ppeg_{\ss^{l-1}}(t).
 \end{align}
 This illustrates that these gradients are responsible for propagating information from lower to higher levels during dynamic inference. 
 
 For dynamic variables in all levels $l=\{1,\dots,L\}$ the gradients are
 \begin{align}
-    \pd{\U(\pog(t),\ptg(t),\pp)}{\psg^l(t)} &=  - \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\ppeg_{\sv^{l}}(t) - \left(\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\ss^{l}}\ppeg_{\ss^{l}}(t).
+    \pd{\U(\pog(t),\ptg(t),\pp)}{\psg^l(t)} &=  - \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\ppeg_{\sv^{l}}(t) - \left(\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\Prec}^{\ss^{l}}\ppeg_{\ss^{l}}(t).
 \end{align}
 
 Also here local linearity assumptions are used to approximate the second order gradients as
 \eq{\label{eq:grad2IntActDvv}
     \ppd{\U(\pog(t),\ptg(t),\pp)}{\pvg^l(t)}{\pvg^k(t)} \approx  \left\{\begin{array}{cl} 
-        \begin{split}&- \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l-1}}\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^k(t)}\\
-    &- \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\ss^{l-1}}\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^k(t)}\end{split}& k = l-1\\
+        \begin{split}&- \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l-1}}\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^k(t)}\\
+    &- \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\ss^{l-1}}\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^k(t)}\end{split}& k = l-1\\
         \hline\\
-        \begin{split} &- \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\\
-        &- \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l-1}}\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^k(t)}\\
-    &- \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\ss^{l-1}}\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^k(t)}\end{split} & k=l\\
+        \begin{split} &- \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\\
+        &- \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l-1}}\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^k(t)}\\
+    &- \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\ss^{l-1}}\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^k(t)}\end{split} & k=l\\
         \hline\\
-        \begin{split}&- \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\end{split}& k = l+1\\
+        \begin{split}&- \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\end{split}& k = l+1\\
         \hline\\
         0 & \mathrm{else}
     \end{array}\right.
 }
 \eq{
     \ppd{\U(\pog(t),\ptg(t),\pp)}{\psg^l(t)}{\psg^k(t)} \approx  \left\{\begin{array}{cl}
-         \begin{split}&- \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\\ 
-        &- \left(\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\ss^{l}}\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\end{split} & k=l\\
+         \begin{split}&- \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\\ 
+        &- \left(\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\Prec}^{\ss^{l}}\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\end{split} & k=l\\
         \hline\\
         0 & \mathrm{else}\end{array} \right.
 }
 \eq{
     \ppd{\U(\pog(t),\ptg(t),\pp)}{\pvg^l(t)}{\psg^k(t)} \approx \left\{\begin{array}{cl}
-         \begin{split}&- \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l-1}}\pd{\ppeg_{\sv^{l-1}}(t)}{\psg^k(t)}\\ &- \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\ss^{l-1}}\pd{\ppeg_{\ss^{l-1}}(t)}{\psg^k(t)}\end{split} & k=l-1\\
+         \begin{split}&- \left(\pd{\ppeg_{\sv^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l-1}}\pd{\ppeg_{\sv^{l-1}}(t)}{\psg^k(t)}\\ &- \left(\pd{\ppeg_{\ss^{l-1}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\ss^{l-1}}\pd{\ppeg_{\ss^{l-1}}(t)}{\psg^k(t)}\end{split} & k=l-1\\
          \hline\\
-         \begin{split} &- \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\psg^k(t)}\end{split} & k=l\\
+         \begin{split} &- \left(\pd{\ppeg_{\sv^{l}}(t)}{\pvg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\psg^k(t)}\end{split} & k=l\\
          \hline\\
          0 & \mathrm{else}\end{array} \right.
 }
 \eq{\label{eq:grad2IntActDuv}
     \ppd{\U(\pog(t),\ptg(t),\pp)}{\psg^l(t)}{\pvg^k(t)} \approx \left\{\begin{array}{cl}
-         \begin{split}&- \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\end{split} & k=l\\
+         \begin{split}&- \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\end{split} & k=l\\
       \hline\\
-         \begin{split} &- \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\\ &- \left(\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\bgs{\Pi}}^{\ss^{l}}\pd{\ppeg_{\ss^{l}}(t)}{\pvg^k(t)}\end{split} & k=l+1\\
+         \begin{split} &- \left(\pd{\ppeg_{\sv^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\Prec}^{\sv^{l}}\pd{\ppeg_{\sv^{l}}(t)}{\pvg^k(t)}\\ &- \left(\pd{\ppeg_{\ss^{l}}(t)}{\psg^l(t)}\right)^\tr\gc{\Prec}^{\ss^{l}}\pd{\ppeg_{\ss^{l}}(t)}{\pvg^k(t)}\end{split} & k=l+1\\
          \hline\\
          0 & \mathrm{else}\end{array} \right.
 }
@@ -371,11 +421,11 @@ As a result we get a (potentially very large) sparse matrix $\ppd{\U(\pog(t),\pt
 
 \begin{figure}
     \centering
-    \includegraphics[width=.5\textwidth]{stateGradientsSparseMatrix.pdf}
+    \def\svgwidth{.5\textwidth}
+    \input{stateGradientsSparseMatrix.pdf_tex}
     \caption{Schematic of sparsity structure of matrix of 2nd order gradients of internal energy with respect to states: $\ppd{\U(\pog(t),\ptg(t),\pp)}{\ptg(t)}{\ptg(t)}$. Labels at the sides correspond to $\pvg^l(t)$ and $\psg^l(t)$, i.e., each of these elements stands for a vector and thus the elements of this schematic matrix are again matrices containing the gradients defined by eqs. (\ref{eq:grad2IntActDvv}-\ref{eq:grad2IntActDuv}).}
     \label{fig:stateGrads}
 \end{figure}
-
 
 \subsubsection{Mixed State-Parameter Gradients}
 
@@ -591,6 +641,7 @@ In conclusion, we have presented three approaches to finding an approximated pos
 
 
 \section{Following the Posterior Mode of the States}
+\label{sec:filtering}
 We now come to the core of Friston's approach to filtering. We believe that his derivation based on an ensemble of particles is confusing and unnecessary. We will ignore it and take a more direct approach. The main idea is the following: View finding the mode of a distribution as gradient ascent in a dynamical system, extend this to the case where the mode underlies a constant drift and show that a representation in generalised coordinates can estimate that drift.
 
 Before, we have seen that the variational posterior is a function of the variational energy, i.e., holding $q(\pp)$ fixed, the approximated posterior for the states at time $t$ is (\todo this needs to be shown for $\ps(t)$ cf. $\Ps$)
