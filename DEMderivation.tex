@@ -37,6 +37,7 @@
   \newcommand{\so}{y}         % scalar observed variable
   \newcommand{\sh}{x}         % scalar hidden variable
   \newcommand{\st}{s}         % scalar combined state variable
+  \newcommand{\sn}{\omega} % scalar noise variable
   \newcommand{\spe}{\epsilon} % scalar prediction error
   \newcommand{\spm}{\mu}    % scalar posterior mode
   \newcommand{\sog}{\gc{\so}}         % scalar observed variable generalised
@@ -50,6 +51,7 @@
   \newcommand{\po}{\bs{\so}}    % vector observed variable
   \newcommand{\ph}{\bs{\sh}}    % vector hidden variable
   \newcommand{\pt}{\bs{\st}}     % vector combined state variable
+  \newcommand{\pn}{\bgs{\sn}} % scalar noise variable
   \newcommand{\ppe}{\bgs{\spe}} % vector prediction error
   \newcommand{\ppm}{\bgs{\spm}}   % vector posterior mode
   \newcommand{\psg}{\gc{\ps}}    % vector  time dependent (state) variable generalised
@@ -121,15 +123,15 @@ $x_{ij}\in \R$ & element in $i$-th row and $j$-th column of matrix $\bs{X}$
 \label{tab:matrixnot}
 \end{table}
 
-Following Friston we only consider Gaussian distributions and denote that the multidimensional random variable $\bs{x}$ is distributed according to a multivariate Gaussian distribution as $\bs{x} \sim \N(\bgs{\mu}, \Cov)$ where $\bgs{\mu}$ is the mean vector, $\Cov$ the covariance matrix and $\Prec = \Cov^{-1}$ the precision. The corresponding probability density function is
+Following Friston we only consider Gaussian distributions and denote that the multidimensional random variable $\bs{x}$ is distributed according to a multivariate Gaussian distribution as $\bs{x} \sim \N(\ppm, \Cov)$ where $\ppm$ is the mean vector, $\Cov$ the covariance matrix and $\Prec = \Cov^{-1}$ the precision. The corresponding probability density function is
 \eq{
-    p(\bs{x}|\bgs{\mu},\Cov) = \frac{1}{\sqrt{\det{2\pi \Cov}}}\exp\left( -\frac{1}{2}(\bs{x} - \bgs{\mu})^\tr\Cov^{-1} (\bs{x} - \bgs{\mu}) \right)
+    p(\bs{x}|\ppm,\Cov) = \frac{1}{\sqrt{\det{2\pi \Cov}}}\exp\left( -\frac{1}{2}(\bs{x} - \ppm)^\tr\Cov^{-1} (\bs{x} - \ppm) \right)
 }
 which we may also write as
 \eq{
-    p(\bs{x}|\bgs{\mu},\Cov) = \frac{1}{Z(\Cov)}\exp\left( -\frac{1}{2}\ppe^\tr\Prec \ppe \right)
+    p(\bs{x}|\ppm,\Cov) = \frac{1}{Z(\Cov)}\exp\left( -\frac{1}{2}\ppe^\tr\Prec \ppe \right)
 }
-where we have defined the 'prediction error' $\ppe = \bs{x} - \bgs{\mu}$.
+where we have defined the 'prediction error' $\ppe = \bs{x} - \ppm$.
 
 In this report we consider hierarchical dynamic models represented in continuous time. However, most people find it easier to think of dynamic (probabilistic) models in discrete time. We therefore think that it is instructive to start with a discrete time representation and see how Friston's continuous time dynamic models relate to that. Fig. \ref{fig:graphicalModel} depicts a discrete time hierarchical dynamic model and introduces some of the variables we consider. In particular, we denominate observed variables at the bottom of the hierarchy as $\po$. These only depend on the hidden, time-dependent state variables $\ps^1$ in the first level which in turn depend on output variables of the 2nd level $\pv^2$ which result from dynamics defined on state variables $\ps^2$ and so on (see also Sec. \ref{sec:hierarchy}).
 
@@ -142,14 +144,96 @@ In this report we consider hierarchical dynamic models represented in continuous
 
 Most of the theoretical concepts treated in this report do not depend on hierarchical models. Hence, we mostly consider only a single level with observations $\po$ and dynamic hidden states $\ps$. For linear dynamical systems for which
 \eq{
-    \ps_t = \bs{A}\ps_{t-1} + \bgs{\varepsilon}_{t},
+    \ps_t = \bs{A}\ps_{t-1} + \pn_{t},
 }
-where $\bgs{\varepsilon}_{t}$ is Gaussian noise, the Kalman filter can be applied to infer hidden states $\ps$ from observations $\po$. Friston's DEM has the same aim, but it is formulated in continuous time, for nonlinear dynamical systems and additionally considers learning of the model parameters which we usually denote as $\pp$.
+where $\pn_{t}$ is Gaussian noise, the Kalman filter can be applied to infer hidden states $\ps$ from observations $\po$. Friston's DEM has the same aim, but it is formulated in continuous time, for nonlinear dynamical systems and additionally considers learning of the model parameters which we usually denote as $\pp$.
 
-This report is structured as follows: First, we introduce Friston's continuous time dynamic probabilistic models and explain his generalised coordinates. Then, we consider what Friston calls the 'internal action' of a model which is, roughly, the integrated joint data-hidden state log-probability whose gradients are used for state inference and learning. We then get to Friston's variational approximation which separates inference of hidden time-dependent states from that of constant parameters (learning) and introduce the Laplace approximation used to compute the expectations over the inferred state posteriors. Subsequently, we derive the optimisation problem used to solve parameter learning. In Sec. \ref{sec:filtering} we discuss the resulting filter algorithm and explain how generalised coordinates improve its performance. We close by considering implementational issues such as discretisation.
+This report is structured as follows: First, we introduce Friston's continuous time dynamic probabilistic models and explain his generalised coordinates. Then, we consider what Friston calls the 'internal action' of a model which is, roughly, the integrated joint data-hidden state log-probability whose gradients are used for state inference and learning. We then get to Friston's variational approximation which separates inference of hidden time-dependent states from that of constant parameters (learning) and introduce the Laplace approximation used to compute the expectations over the inferred state posteriors. Subsequently, we derive the optimisation problem used to solve parameter learning. In Sec. \ref{sec:filtering} we discuss the resulting filter algorithm and explain how generalised coordinates improve its performance. We close by considering implementational issues such as numerical integration and discretisation.
+
+
+\section{Discrete Time Dynamical Systems}
+We consider a multivariate, nonlinear, single level, discrete time dynamical system defined via the state space equations
+\begin{align}
+    \label{eq:linmodel_dyn}\ps_t &= f(\ps_{t-1}, \pp_{\ss}) + \pn_t^{\ss}\\
+    \label{eq:linmodel_obs}\po_t &= g(\ps_t, \pp_{\so}) + \pn_t^{\so}
+\end{align}
+where $f, g$ are general, nonlinear functions of the hidden states $\ps$ with parameters $\pp_{\ss}, \pp_{\so}$ and the $\pn$ are Gaussian noise variables centred at 0 and with covariance $\Cov_{\ss}, \Cov_{\so}$.
+
+The joint density over observations and hidden states is then defined as
+\eq{
+    p(\Po,\Ps|\pp) = p(\po_1|\ps_1)p(\ps_1)\prod_{t=2}^T p(\po_t|\ps_t)p(\ps_t|\ps_{t-1})
+}
+where we consider time points $t=1\dots T$, matrices $\Po = [\po_1^\tr, \dots, \po_T^\tr]^\tr$ and $\Ps = [\ps_1^\tr, \dots, \ps_T^\tr]^\tr$ collect the observed and state variables across time and the densities are Gaussian with $\po_t \sim \N(g(\ps_t, \pp_{\so}), \Cov_{\so})$ and $\ps_t \sim \N(g(\ps_{t-1}, \pp_{\ss}), \Cov_{\ss})$. To complete the model, we add a Gaussian prior over parameters and obtain the complete joint density
+\eq{
+    p(\Po,\Ps,\pp) = p(\Po,\Ps|\pp)p(\pp).
+}
+
+The primary aim of inference in this system is learning: What are the parameters $\pp_{\ss}, \pp_{\so}$ of an observed system in the world? But, using a variational approach \cite{Beal2003}, we will see that this entails also inferring the hidden states $\Ps$ which corresponds to perception as it tries to estimate the current state of the real system in the world under the assumption that the real system is equal to our model. Both, parameters and hidden states, are therefore states which need to be inferred. The difference is only that parameters are stable over the observation period while hidden states change. Consequently, the resulting algorithm should provide online inference for hidden states while parameters only need to be updated after certain fixed time points (e.g., at time $t=T$).
+
+
+\subsection{Variational Approximation}
+We apply Variational Bayesian EM \cite{Beal2003} to the state space model defined above. This means that we consider the log marginal likelihood of the model
+\eq{
+    \log p(\Po) = \log \iint p(\Po,\Ps|\pp)p(\pp) d\Ps d\pp
+}
+which we lower-bound using Jensen's inequality
+\eq{
+    \log p(\Po) \geq \iint q(\Ps, \pp)\log \frac{p(\Po,\Ps|\pp)p(\pp)}{q(\Ps, \pp)} d\Ps d\pp = F(q).
+}
+We then let the variational density $q$ factorise as $q(\Ps, \pp) = q_{\ss}(\Ps)q_{\sp}(\pp)$ which constitutes the actual approximation, because we know that $F(q) = \log p(\Po)$, if $q(\Ps, \pp) = p(\Ps,\pp|\Po)$. Consequently, the approximation is based on the assumption that the posterior factorises $p(\Ps,\pp|\Po) = p(\Ps|\Po) p(\pp|\Po)$. Applying variational calculus then yields
+\eq{\label{eq:vardensupdate_params}
+    q_{\sp}(\pp) \propto p(\pp)\exp\left(\E[q_\ss]{\log p(\Po,\Ps|\pp)}\right)
+}
+and
+\eq{\label{eq:vardensupdate_states}
+    q_{\ss}(\Ps) \propto \exp\left(\E[q_\sp]{\log p(\Po,\Ps|\pp)}\right).
+}
+These two equations would need to be iterated in order to increase the lower bound on the log marginal likelihood $\log p(\Po)$. Then, the variational density $q_{\ss}(\Ps)q_{\sp}(\pp)$ would come closer to the true posterior $p(\Ps,\pp|\Po)$ (subject to the assumed conditional indepence of $\Ps$ and $\pp$ given $\Po$). However, we cannot actually evaluate the expectations inside the exponentials for the general models defined in Eqs. \ref{eq:linmodel_dyn} and \ref{eq:linmodel_obs}, i.e., we additionally need to approximate these expectations and give $q_{\ss}(\Ps), q_{\sp}(\pp)$ a form we can handle. This approximation follows next.
+
+\subsection{Laplace approximation}
+With the Laplace approximation we assume that the variational densities $q_{\ss}, q_{\sp}$ are Gaussian with means $\ppm_{\ss}$, $\ppm_{\sp}$ and covariances $\Cov_{\spm_\ss}, \Cov_{\spm_\sp}$. In other words, we approximate the (variational) posteriors $p(\Ps|\Po)$ and $p(\pp|\Po)$ using their mean and covariance only. As a result, we only need to find modes of Eqs. \ref{eq:vardensupdate_params}, \ref{eq:vardensupdate_states} and estimate the curvature around these modes which will provide means and covariances of the variational densities $q_\sp$ and $q_\ss$.
+
+Let us first consider the general approach and then apply it to the particular problem of a state space model. Following Friston we call $\U(\ph) = \log p(\po, \ph)$ the 'internal' or 'Gibbs energy'. We now approximate $\U(\ph)$ using a 2nd-order Taylor expansion around the mean $\ppm$ of a variational density $q_\sh(\ph)$
+\eq{
+    \U(\ph) \approx \U(\ppm) + (\ph - \ppm)^\tr \U_\ph(\ppm) + \frac{1}{2}(\ph - \ppm)^\tr \U_{\ph\ph}(\ppm) (\ph - \ppm)
+}
+where $\U_\ph(\ppm) = \pd{\U}{\ph}(\ppm)$ is the gradient of $\U$ evaluated at $\ppm$ and $\U_{\ph\ph}(\ppm)$ is the corresponding Hessian matrix.
+
+We actually want to approximate the expectation of $\U$
+\begin{align}
+    \E[q_\sh]{\U(\ph)} &\approx 
+            \E[q_\sh]{\U(\ppm)} + \E[q_\sh]{(\ph - \ppm)^\tr \U_\ph(\ppm)}\nonumber\\
+               & \qquad + \E[q_\sh]{\frac{1}{2}(\ph - \ppm)^\tr \U_{\ph\ph}(\ppm) (\ph - \ppm)}\\
+        &= \U(\ppm) + \left(\E[q_\sh]{\ph} - \ppm\right)^\tr \U_\ph(\ppm) + \frac{1}{2}\trace{\U_{\ph\ph}(\ppm)\Cov}\\
+        &= \U(\ppm) + \frac{1}{2}\trace{\U_{\ph\ph}(\ppm)\Cov}
+\end{align}
+where we have solved the expectation of the quadratic term using standard results for the multivariate Gaussian distribution \citep[][eq. (357)]{Petersen2008}. We can now plug this result into Eqs. \ref{eq:vardensupdate_params}, \ref{eq:vardensupdate_states} to find modes of the variational densities.
+
+
+\subsubsection{Computing the Variational Density of Parameters}
+shouldn't you be able to estimate the mode as well as the covariance from Eq. \ref{eq:vardensupdate_params} instead of getting the covariance from plugging the Taylor expansion into the free energy formula, computing its gradient with respect to the covariance and setting this to 0?
+
+\subsubsection{Computing the Variational Density of Hidden States}
 
 
 \section{Nonlinear Gaussian Dynamic Models in Continuous Time}
+We have given the following, indirectly observed, stochastic dynamical system
+\begin{align}
+    \label{eq:model_dyn}\dot{\ps} &= f(\ps, \pp_{\ss}) + \pn_{\ss}\\
+    \po &= g(\ps, \pp_{\so}) + \pn_{\so}
+\end{align}
+where $f, g$ are general, nonlinear functions of the hidden states $\ps$ with parameters $\pp_{\ss}, \pp_{\so}$ and the $\pn$ are Gaussian noise variables centred at 0 and with covariance $\Cov_{\ss}, \Cov_{\so}$. We have here used Friston's own notation of stochastic differential equations which appears to be following the notation for discrete time systems. He never defines this formally. Our best guess is that Eq. \ref{eq:model_dyn} corresponds to a stochastic differential equation in It\={o} calculus:
+\[
+    d\ps = f(\ps, \pp_{\ss})dt + \bs{L}d\bs{w}
+\]
+where $\bs{L}\bs{L}^\tr = \Cov_{\ss}$ is the Cholesky decomposition of the covariance and $d\bs{w}$ is a vector of Wiener processes. We will now use the analogy to discrete time systems to gain an intuitive understanding of what kind of probabilistic model Friston assumes, what the aim of inference in this model is and what kind of approximations he makes. Because of our lack of in depth knowledge of It\={o} calculus we cannot comment on the corresponding It\={o} calculations or correctness of such an analysis in continuous time.
+
+In discrete time the dynamic state equations would lead to the following probabilistic model at time $t=1$
+\eq{
+    p(\po_1, \ps_1) = p(\po_1| \ps_1)\int p(\ps_1|\ps_0)p(\ps_0) d\ps_0 = p(\po_1| \ps_1)p(\ps_1)
+}
+where $p(\ps_0)$ is a prior distribution over the initial hidden states at time $t=0$.
+
 Whatever function is used in the end to find the posterior mode, all corresponding gradients are computed from the gradients of $\Ua$. So it is time to look at the structure of $\Ua$. Notice that from here on subscripts of variables or functions are used solely to identify different variables or functions, or to index into matrices and vectors. Partial derivatives are written out in the standard format. While this clutters the formulae more, it helps us to make them conceptually clearer.
 
 First, remember that (eq. \ref{eq:intAction})
