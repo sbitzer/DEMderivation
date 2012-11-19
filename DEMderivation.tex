@@ -163,7 +163,7 @@ The joint density over observations and hidden states is then defined as
 \eq{
     p(\Po,\Ps|\pp) = p(\po_1|\ps_1)p(\ps_1)\prod_{t=2}^T p(\po_t|\ps_t)p(\ps_t|\ps_{t-1})
 }
-where we consider time points $t=1\dots T$, matrices $\Po = [\po_1^\tr, \dots, \po_T^\tr]^\tr$ and $\Ps = [\ps_1^\tr, \dots, \ps_T^\tr]^\tr$ collect the observed and state variables across time and the densities are Gaussian with $\po_t \sim \N(g(\ps_t, \pp_{\so}), \Cov_{\so})$ and $\ps_t \sim \N(g(\ps_{t-1}, \pp_{\ss}), \Cov_{\ss})$. To complete the model, we add a Gaussian prior over parameters and obtain the complete joint density
+where we consider time points $t=1\dots T$, matrices $\Po = [\po_1, \dots, \po_T]^\tr$ and $\Ps = [\ps_1, \dots, \ps_T]^\tr$ collect the observed and state variables across time and the densities are Gaussian with $\po_t \sim \N(g(\ps_t, \pp_{\so}), \Cov_{\so})$ and $\ps_t \sim \N(g(\ps_{t-1}, \pp_{\ss}), \Cov_{\ss})$. To complete the model, we add a Gaussian prior over parameters and obtain the complete joint density
 \eq{
     p(\Po,\Ps,\pp) = p(\Po,\Ps|\pp)p(\pp).
 }
@@ -193,27 +193,38 @@ These two equations would need to be iterated in order to increase the lower bou
 \subsection{Laplace approximation}
 With the Laplace approximation we assume that the variational densities $q_{\ss}, q_{\sp}$ are Gaussian with means $\ppm_{\ss}$, $\ppm_{\sp}$ and covariances $\Cov_{\spm_\ss}, \Cov_{\spm_\sp}$. In other words, we approximate the (variational) posteriors $p(\Ps|\Po)$ and $p(\pp|\Po)$ using their mean and covariance only. As a result, we only need to find modes of Eqs. \ref{eq:vardensupdate_params}, \ref{eq:vardensupdate_states} and estimate the curvature around these modes which will provide means and covariances of the variational densities $q_\sp$ and $q_\ss$.
 
-Let us first consider the general approach and then apply it to the particular problem of a state space model. Following Friston we call $\U(\ph) = \log p(\po, \ph)$ the 'internal' or 'Gibbs energy'. We now approximate $\U(\ph)$ using a 2nd-order Taylor expansion around the mean $\ppm$ of a variational density $q_\sh(\ph)$
+The Laplace approximation (e.g. \cite[p. 255]{Murphy2012}) is based on a 2nd order Taylor series approximation around the mode of a considered density. We will use this approach twice: 1) to approximate the expectations using a given $q_\sp, q_\ss$ and 2) as the actual Laplace approximation to estimate the Gaussian from of $q_\sp, q_\ss$.
+
+Let us consider 1) first. We want to approximate the expectations $\E[q_\ss]{\log p(\Po,\Ps|\pp)}$ and $\E[q_\sp]{\log p(\Po,\Ps|\pp)}$. Following Friston we call $\U = \log p(\Po,\Ps|\pp)$ the 'internal' or 'Gibbs energy'. When estimating $q_\sp$ in Eq. \ref{eq:vardensupdate_params} we consider $\U(\Ps)$ to be a function of the hidden states such that the expectation becomes $\E[q_\ss]{\U(\Ps)}$. Similarly, when estimating $q_\ss$ in Eq. \ref{eq:vardensupdate_states} we consider $\U(\pp)$ to be a function of the parameters such that the expectation becomes $\E[q_\sp]{\U(\pp)}$. We proceed with the parameters and Taylor expand $\U(\pp)$ around the mean of $q_\sp$:
 \eq{
-    \U(\ph) \approx \U(\ppm) + (\ph - \ppm)^\tr \U_\ph(\ppm) + \frac{1}{2}(\ph - \ppm)^\tr \U_{\ph\ph}(\ppm) (\ph - \ppm)
+    \U(\pp) \approx \U(\ppm_\sp) + (\pp - \ppm_\sp)^\tr \U_{\pp}(\ppm_\sp) + \frac{1}{2}(\pp - \ppm_\sp)^\tr \U_{\pp\pp}(\ppm_\sp) (\pp - \ppm_\sp)
 }
-where $\U_\ph(\ppm) = \pd{\U}{\ph}(\ppm)$ is the gradient of $\U$ evaluated at $\ppm$ and $\U_{\ph\ph}(\ppm)$ is the corresponding Hessian matrix.
+where $\U_{\pp}(\ppm_\sp) = \pd{\U}{\pp}(\ppm_\sp)$ is the gradient of $\U$ evaluated at $\ppm_\sp$ and $\U_{\pp\pp}(\ppm)$ is the corresponding Hessian matrix.
 
-We actually want to approximate the expectation of $\U$
+We plug this into the expectation of $\U$
 \begin{align}
-    \E[q_\sh]{\U(\ph)} &\approx 
-            \E[q_\sh]{\U(\ppm)} + \E[q_\sh]{(\ph - \ppm)^\tr \U_\ph(\ppm)}\nonumber\\
-               & \qquad + \E[q_\sh]{\frac{1}{2}(\ph - \ppm)^\tr \U_{\ph\ph}(\ppm) (\ph - \ppm)}\\
-        &= \U(\ppm) + \left(\E[q_\sh]{\ph} - \ppm\right)^\tr \U_\ph(\ppm) + \frac{1}{2}\trace{\U_{\ph\ph}(\ppm)\Cov}\\
-        &= \U(\ppm) + \frac{1}{2}\trace{\U_{\ph\ph}(\ppm)\Cov}
+    \E[q_\sp]{\U(\pp)} &\approx 
+            \E[q_\sp]{\U(\ppm_\sp)} + \E[q_\sp]{(\ph - \ppm_\sp)^\tr \U_{\pp}(\ppm_\sp)}\nonumber\\
+               & \qquad + \E[q_\sp]{\frac{1}{2}(\ph - \ppm_\sp)^\tr \U_{\pp\pp}(\ppm_\sp) (\ph - \ppm_\sp)}\\
+        &= \U(\ppm_\sp) + \left(\E[q_\sp]{\pp} - \ppm_\sp\right)^\tr \U_{\pp}(\ppm_\sp) + \frac{1}{2}\trace{\U_{\pp\pp}(\ppm_\sp)\Cov_{\ppm_\sp}}\\
+        &= \U(\ppm_\sp) + \frac{1}{2}\trace{\U_{\pp\pp}(\ppm_\sp)\Cov_{\ppm_\sp}}
 \end{align}
-where we have solved the expectation of the quadratic term using standard results for the multivariate Gaussian distribution \citep[][eq. (357)]{Petersen2008}. We can now plug this result into Eqs. \ref{eq:vardensupdate_params}, \ref{eq:vardensupdate_states} to find modes of the variational densities.
+where we have solved the expectation of the quadratic term using standard results for the multivariate Gaussian distribution \citep[][eq. (357)]{Petersen2008}. To account for the structure of the state space model we need to do some additional work (see below) to apply this analysis also to the expectation $\E[q_\ss]{\U(\Ps)}$, but the same principle will be used. First, we show how we can get $q_\ss$ from the approximated $\E[q_\sp]{\U(\pp)}$ which corresponds to 2) above.
+
+We follow the standard approach described in \cite[p. 255]{Murphy2012} by noting that Eq. \ref{eq:vardensupdate_states} has the appropriate form
+\eq{
+    q_{\ss}(\Ps) = \frac{1}{Z}\exp\left(\E[q_\sp]{\U(\pp)}\right) = \frac{1}{Z}\exp\left(-E(\Ps)\right)
+}
+where we have defined $E(\Ps) = -\E[q_\sp]{\U(\pp)}$ and $Z$ is a normalisation constant. Then the mean $\ppm_\ss$ of $q_\ss$ is a minimum of $E(\Ps)$ and the covariance $\Cov_{\ppm_\ss}$ is the curvature of $E(\Ps)$ around the found minimum: $\Cov_{\ppm_\ss} = \ppd{E(\Ps)}{\Ps}{\Ps}(\ppm_\ss)$. At least, this is how it would be, if $\Ps$ was a vector. Such a formulation can easily be found by simply redefining $\Ps$ as the concatenation of all hidden state vectors $\Ps = [\ps_1^\tr, \dots, \ps_T^\tr]^\tr$. We can compute the necessary gradients of $E(\Ps)$ when plugging in the approximation of $\E[q_\sp]{\U(\pp)}$
+\begin{align}
+    E(\Ps) &\approx - \U(\ppm_\sp) - \frac{1}{2}\trace{\U_{\pp\pp}(\ppm_\sp)\Cov_{\ppm_\sp}}\\
+    &= - \log p(\Po,\Ps|\ppm_\sp) - \frac{1}{2}\trace{\left.\ppd{\log p(\Po,\Ps|\pp)}{\pp}{\pp}\right|_{\ppm_\sp}\Cov_{\ppm_\sp}}.
+\end{align}
+We now need to consider the structure of $p(\Po,\Ps|\pp)$ to find a minimum of $E(\Ps)$ together with its associated curvature and obtain an online algorithm which can process observations sequentially as they come in.
 
 
-\subsubsection{Computing the Variational Density of Parameters}
-shouldn't you be able to estimate the mode as well as the covariance from Eq. \ref{eq:vardensupdate_params} instead of getting the covariance from plugging the Taylor expansion into the free energy formula, computing its gradient with respect to the covariance and setting this to 0?
+\subsection{Online Computation of the Variational Density of the Hidden States}
 
-\subsubsection{Computing the Variational Density of Hidden States}
 
 
 \section{Nonlinear Gaussian Dynamic Models in Continuous Time}
