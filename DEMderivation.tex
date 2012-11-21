@@ -163,7 +163,7 @@ The joint density over observations and hidden states is then defined as
 \eq{
     p(\Po,\Ps|\pp) = p(\po_1|\ps_1)p(\ps_1)\prod_{t=2}^T p(\po_t|\ps_t)p(\ps_t|\ps_{t-1})
 }
-where we consider time points $t=1\dots T$, matrices $\Po = [\po_1, \dots, \po_T]^\tr$ and $\Ps = [\ps_1, \dots, \ps_T]^\tr$ collect the observed and state variables across time and the densities are Gaussian with $\po_t \sim \N(g(\ps_t, \pp_{\so}), \Cov_{\so})$ and $\ps_t \sim \N(g(\ps_{t-1}, \pp_{\ss}), \Cov_{\ss})$. To complete the model, we add a Gaussian prior over parameters and obtain the complete joint density
+where we consider time points $t=1\dots T$, matrices $\Po = [\po_1, \dots, \po_T]^\tr$ and $\Ps = [\ps_1, \dots, \ps_T]^\tr$ collect the observed and state variables across time and the densities are Gaussian with $\po_t \sim \N(g(\ps_t, \pp_{\so}), \Cov_{\so})$ and $\ps_t \sim \N(f(\ps_{t-1}, \pp_{\ss}), \Cov_{\ss})$. To complete the model, we add a Gaussian prior over parameters and obtain the complete joint density
 \eq{
     p(\Po,\Ps,\pp) = p(\Po,\Ps|\pp)p(\pp).
 }
@@ -218,13 +218,13 @@ We follow the standard approach described in \cite[p. 255]{Murphy2012} by noting
 where we have defined $E(\Ps) = -\E[q_\sp]{\U(\pp)}$ and $Z$ is a normalisation constant. Then the mean $\ppm_\ss$ of $q_\ss$ is a minimum of $E(\Ps)$ and the covariance $\Cov_{\ppm_\ss}$ is the curvature of $E(\Ps)$ around the found minimum: $\Cov_{\ppm_\ss} = \ppd{E(\Ps)}{\Ps}{\Ps}(\ppm_\ss)$. At least, this is how it would be, if $\Ps$ was a vector. Such a formulation can easily be found by simply redefining $\Ps$ as the concatenation of all hidden state vectors $\Ps = [\ps_1^\tr, \dots, \ps_T^\tr]^\tr$. We can compute the necessary gradients of $E(\Ps)$ when plugging in the approximation of $\E[q_\sp]{\U(\pp)}$
 \begin{align}
     E(\Ps) &\approx - \U(\ppm_\sp) - \frac{1}{2}\trace{\U_{\pp\pp}(\ppm_\sp)\Cov_{\ppm_\sp}}\\
-    &= - \log p(\Po,\Ps|\ppm_\sp) - \frac{1}{2}\trace{\left.\ppd{\log p(\Po,\Ps|\pp)}{\pp}{\pp}\right|_{\ppm_\sp}\Cov_{\ppm_\sp}}.
+    \label{eq:stateenergy} &= - \log p(\Po,\Ps|\ppm_\sp) - \frac{1}{2}\trace{\left.\ppd{\log p(\Po,\Ps|\pp)}{\pp}{\pp}\right|_{\ppm_\sp}\Cov_{\ppm_\sp}}.
 \end{align}
 We now need to consider the structure of $p(\Po,\Ps|\pp)$ to find a minimum of $E(\Ps)$ together with its associated curvature and obtain an online algorithm which can process observations sequentially as they come in.
 
 
 \subsection{Online Computation of the Variational Density of the Hidden States}
-
+In the previous section we have seen that we need to minimise $E(\Ps)$ to find the mean of the variational density $q_\ss(\Ps)$. A major component of $E(\Ps)$ is the joint data-hidden state density $p(\Po,\Ps|\ppm_\sp)$ which is proportional to the true posterior $p(\Ps|\Po,\ppm_\sp)$. The second term of Eq. \ref{eq:stateenergy} accounts for the uncertainty in the parameter estimates. When the variance of the parameters $\Cov_{\ppm_\sp}$ goes to zero, i.e., parameter estimates are very certain, such that the second term in Eq. \ref{eq:stateenergy} becomes zero, minimisation of $E(\Ps)$ is equal to finding a mode of the true posterior $p(\Ps|\Po,\ppm_\sp)$. In this situation, any algorithm which can compute (an approximation of) the posterior can be used and the variational approach is unnecessary. However, because the posterior is conditioned on all observations up to time $T$, a smooting algorithm, which also uses future observations to estimate a hidden state, has to be used and not a filter, which only uses past and current observations. Clearly, smoothing is not online and we need to make further approximations to arrive at an online variational algorithm. 
 
 
 \section{Nonlinear Gaussian Dynamic Models in Continuous Time}
