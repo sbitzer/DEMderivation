@@ -193,7 +193,7 @@ These two equations would need to be iterated in order to increase the lower bou
 \subsection{Laplace approximation}
 With the Laplace approximation we assume that the variational densities $q_{\ss}, q_{\sp}$ are Gaussian with means $\ppm_{\ss}$, $\ppm_{\sp}$ and covariances $\Cov_{\spm_\ss}, \Cov_{\spm_\sp}$. In other words, we approximate the (variational) posteriors $p(\Ps|\Po)$ and $p(\pp|\Po)$ using their mean and covariance only. As a result, we only need to find modes of Eqs. \ref{eq:vardensupdate_params}, \ref{eq:vardensupdate_states} and estimate the curvature around these modes which will provide means and covariances of the variational densities $q_\sp$ and $q_\ss$.
 
-The Laplace approximation (e.g. \cite[p. 255]{Murphy2012}) is based on a 2nd order Taylor series approximation around the mode of a considered density. We will use this approach twice: 1) to approximate the expectations using a given $q_\sp, q_\ss$ and 2) as the actual Laplace approximation to estimate the Gaussian from of $q_\sp, q_\ss$.
+The Laplace approximation (e.g. \cite[p. 255]{Murphy2012}) is based on a 2nd order Taylor series approximation around the mode of a considered density. We will use this approach twice: 1) to approximate the expectations using a given $q_\sp, q_\ss$ and 2) as the actual Laplace approximation to estimate the Gaussian form of $q_\sp, q_\ss$.
 
 Let us consider 1) first. We want to approximate the expectations $\E[q_\ss]{\log p(\Po,\Ps|\pp)}$ and $\E[q_\sp]{\log p(\Po,\Ps|\pp)}$. Following Friston we call $\U = \log p(\Po,\Ps|\pp)$ the 'internal' or 'Gibbs energy'. When estimating $q_\sp$ in Eq. \ref{eq:vardensupdate_params} we consider $\U(\Ps)$ to be a function of the hidden states such that the expectation becomes $\E[q_\ss]{\U(\Ps)}$. Similarly, when estimating $q_\ss$ in Eq. \ref{eq:vardensupdate_states} we consider $\U(\pp)$ to be a function of the parameters such that the expectation becomes $\E[q_\sp]{\U(\pp)}$. We proceed with the parameters and Taylor expand $\U(\pp)$ around the mean of $q_\sp$:
 \eq{
@@ -224,7 +224,28 @@ We now need to consider the structure of $p(\Po,\Ps|\pp)$ to find a minimum of $
 
 
 \subsection{Online Computation of the Variational Density of the Hidden States}
-In the previous section we have seen that we need to minimise $E(\Ps)$ to find the mean of the variational density $q_\ss(\Ps)$. A major component of $E(\Ps)$ is the joint data-hidden state density $p(\Po,\Ps|\ppm_\sp)$ which is proportional to the true posterior $p(\Ps|\Po,\ppm_\sp)$. The second term of Eq. \ref{eq:stateenergy} accounts for the uncertainty in the parameter estimates. When the variance of the parameters $\Cov_{\ppm_\sp}$ goes to zero, i.e., parameter estimates are very certain, such that the second term in Eq. \ref{eq:stateenergy} becomes zero, minimisation of $E(\Ps)$ is equal to finding a mode of the true posterior $p(\Ps|\Po,\ppm_\sp)$. In this situation, any algorithm which can compute (an approximation of) the posterior can be used and the variational approach is unnecessary. However, because the posterior is conditioned on all observations up to time $T$, a smooting algorithm, which also uses future observations to estimate a hidden state, has to be used and not a filter, which only uses past and current observations. Clearly, smoothing is not online and we need to make further approximations to arrive at an online variational algorithm. 
+In the previous section we have seen that we need to minimise $E(\Ps)$ to find the mean of the variational density $q_\ss(\Ps)$. A major component of $E(\Ps)$ is the joint data-hidden state density $p(\Po,\Ps|\ppm_\sp)$ which is proportional to the true posterior $p(\Ps|\Po,\ppm_\sp)$. The second term of Eq. \ref{eq:stateenergy} accounts for the uncertainty in the parameter estimates. When the variance of the parameters $\Cov_{\ppm_\sp}$ goes to zero, i.e., parameter estimates are very certain, such that the second term in Eq. \ref{eq:stateenergy} becomes zero, minimisation of $E(\Ps)$ is equal to finding a mode of the true posterior $p(\Ps|\Po,\ppm_\sp)$. In this situation, any algorithm which can compute (an approximation of) the posterior can be used and the variational approach is unnecessary. 
+
+\subsubsection{Background: Filtering}
+In particular, we are interested in (online) filtering approaches which sequentially estimate $p(\Ps_{1:t}|\Po_{1:t},\ppm_\sp)$ for increasing $t$ where the index $1:t$ indicates that variables at time points 1 to $t$ are considered such that, e.g., $\Ps_{1:t} = \{\ps_1, \dots, \ps_t\}$. There is a general recursion relating subsequent time points \cite[see e.g.][]{Doucet2011}
+\eq{
+    \label{eq:stateposteriorrecursion} p(\Ps_{1:t}|\Po_{1:t},\ppm_\sp) = p(\Ps_{1:t-1}|\Po_{1:t-1},\ppm_\sp)\frac{p(\ps_t|\ps_{t-1},\ppm_\sp)p(\po_t|\ps_t,\ppm_\sp)}{p(\po_t|\Po_{1:t-1},\ppm_\sp)}
+}
+where the model densities $p(\ps_t|\ps_{t-1},\ppm_\sp), p(\po_t|\ps_t,\ppm_\sp)$ are defined by Eqs. \ref{eq:linmodel_dyn} and \ref{eq:linmodel_obs}, respectively, and $p(\po_t|\Po_{1:t-1},\ppm_\sp)$ is the density which predicts the next observation based on the model and the previously seen observations. It is the latter predictive density which often prevents computation of the exact posterior, because it requires integration over hidden states (we omit explicit conditioning on the expected parameters $\ppm_\sp$ for brevity):
+\eq{
+    p(\po_t|\Po_{1:t-1}) = \iint p(\ps_{t-1}|\Po_{1:t-1}) p(\ps_t|\ps_{t-1}) p(\po_t|\ps_t) d\ps_{t-1} d\ps_t
+}
+where $p(\ps_t|\Po_{1:t})$ is the usual filter density used in tracking applications which can be computed in a recursion with prediction step
+\eq{
+    \label{eq:filterpredstep} p(\ps_t|\Po_{1:t-1}) = \int p(\ps_t|\ps_{t-1}) p(\ps_{t-1}|\Po_{1:t-1}) d\ps_{t-1}
+}
+followed by an update step
+\eq{
+    \label{eq:filterupdatestep} p(\ps_t|\Po_{1:t}) = \frac{p(\po_t|\ps_t) p(\ps_t|\Po{1:t-1})}{p(\po_t|\Po_{1:t-1})}.
+}
+These equations can be obtained by integrating $\Ps_{1:t-1}$ out of $p(\Ps_{1:t}|\Po_{1:t})$ in Eq. \ref{eq:stateposteriorrecursion}. Filtering algorithms provide computationally feasible implementations of these equations by making suitable approximations, when analytic solutions cannot be found. The Kalman filter based algorithms mostly work with Eqs. \ref{eq:filterpredstep}, \ref{eq:filterupdatestep} while particle filters approximate the recursion in Eq. \ref{eq:stateposteriorrecursion} \cite{Doucet2011}.
+
+Can you get the full posterior $p(\Ps_{1:t}|\Po_{1:t},\ppm_\sp)$ from the marginals $p(\ps_t|\Po_{1:t})$?
 
 
 \section{Nonlinear Gaussian Dynamic Models in Continuous Time}
