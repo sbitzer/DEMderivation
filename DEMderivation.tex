@@ -51,13 +51,14 @@
   \newcommand{\po}{\bs{\so}}    % vector observed variable
   \newcommand{\ph}{\bs{\sh}}    % vector hidden variable
   \newcommand{\pt}{\bs{\st}}     % vector combined state variable
-  \newcommand{\pn}{\bgs{\sn}} % scalar noise variable
+  \newcommand{\pn}{\bgs{\sn}} % vector noise variable
   \newcommand{\ppe}{\bgs{\spe}} % vector prediction error
   \newcommand{\ppm}{\bgs{\spm}}   % vector posterior mode
   \newcommand{\psg}{\gc{\ps}}    % vector  time dependent (state) variable generalised
   \newcommand{\pzg}{\gc{\pz}}    % vector state variable generalised
   \newcommand{\pvg}{\gc{\pv}}    % vector output variable generalised
   \newcommand{\ptg}{\gc{\pt}}     % vector combined state variable generalised
+  \newcommand{\png}{\gc{\pn}}    % vector noise variable generalised
   \newcommand{\pog}{\gc{\po}}    % vector observed variable generalised
   \newcommand{\phg}{\gc{\ph}}    % vector hidden variable generalised
   \newcommand{\ppeg}{\gc{\ppe}} % vector prediction error
@@ -68,6 +69,7 @@
   \newcommand{\Pv}{\bs{V}}    % matrix output variable
   \newcommand{\Ph}{\bs{X}}    % matrix hidden variable
   \newcommand{\Pt}{\bs{S}}    % matrix combined state variable
+  \newcommand{\Psg}{\gc{\Ps}}    % matrix  time dependent (state) variable generalised
 
 \newcommand{\D}{\bs{D}}				% differential operator
 \newcommand{\K}{\bs{K}}					% kernel
@@ -190,6 +192,7 @@ and
 }
 These two equations would need to be iterated in order to increase the lower bound on the log marginal likelihood $\log p(\Po)$. Then, the variational density $q_{\ss}(\Ps)q_{\sp}(\pp)$ would come closer to the true posterior $p(\Ps,\pp|\Po)$ (subject to the assumed conditional indepence of $\Ps$ and $\pp$ given $\Po$). However, we cannot actually evaluate the expectations inside the exponentials for the general models defined in Eqs. \ref{eq:linmodel_dyn} and \ref{eq:linmodel_obs}, i.e., we additionally need to approximate these expectations and give $q_{\ss}(\Ps), q_{\sp}(\pp)$ a form we can handle. This approximation follows next.
 
+
 \subsection{Laplace approximation}
 With the Laplace approximation we assume that the variational densities $q_{\ss}, q_{\sp}$ are Gaussian with means $\ppm_{\ss}$, $\ppm_{\sp}$ and covariances $\Cov_{\spm_\ss}, \Cov_{\spm_\sp}$. In other words, we approximate the (variational) posteriors $p(\Ps|\Po)$ and $p(\pp|\Po)$ using their mean and covariance only. As a result, we only need to find modes of Eqs. \ref{eq:vardensupdate_params}, \ref{eq:vardensupdate_states} and estimate the curvature around these modes which will provide means and covariances of the variational densities $q_\sp$ and $q_\ss$.
 
@@ -199,7 +202,7 @@ Let us consider 1) first. We want to approximate the expectations $\E[q_\ss]{\lo
 \eq{
     \U(\pp) \approx \U(\ppm_\sp) + (\pp - \ppm_\sp)^\tr \U_{\pp}(\ppm_\sp) + \frac{1}{2}(\pp - \ppm_\sp)^\tr \U_{\pp\pp}(\ppm_\sp) (\pp - \ppm_\sp)
 }
-where $\U_{\pp}(\ppm_\sp) = \pd{\U}{\pp}(\ppm_\sp)$ is the gradient of $\U$ evaluated at $\ppm_\sp$ and $\U_{\pp\pp}(\ppm)$ is the corresponding Hessian matrix.
+where $\U_{\pp}(\ppm_\sp) = \pd{\U}{\pp}(\ppm_\sp)$ is the gradient of $\U$ evaluated at $\ppm_\sp$ and $\U_{\pp\pp}(\ppm_\sp)$ is the corresponding Hessian matrix.
 
 We plug this into the expectation of $\U$
 \begin{align}
@@ -218,13 +221,15 @@ We follow the standard approach described in \cite[p. 255]{Murphy2012} by noting
 where we have defined $E(\Ps) = -\E[q_\sp]{\U(\pp)}$ and $Z$ is a normalisation constant. Then the mean $\ppm_\ss$ of $q_\ss$ is a minimum of $E(\Ps)$ and the covariance $\Cov_{\ppm_\ss}$ is the curvature of $E(\Ps)$ around the found minimum: $\Cov_{\ppm_\ss} = \ppd{E(\Ps)}{\Ps}{\Ps}(\ppm_\ss)$. At least, this is how it would be, if $\Ps$ was a vector. Such a formulation can easily be found by simply redefining $\Ps$ as the concatenation of all hidden state vectors $\Ps = [\ps_1^\tr, \dots, \ps_T^\tr]^\tr$. We can compute the necessary gradients of $E(\Ps)$ when plugging in the approximation of $\E[q_\sp]{\U(\pp)}$
 \begin{align}
     E(\Ps) &\approx - \U(\ppm_\sp) - \frac{1}{2}\trace{\U_{\pp\pp}(\ppm_\sp)\Cov_{\ppm_\sp}}\\
-    \label{eq:stateenergy} &= - \log p(\Po,\Ps|\ppm_\sp) - \frac{1}{2}\trace{\left.\ppd{\log p(\Po,\Ps|\pp)}{\pp}{\pp}\right|_{\ppm_\sp}\Cov_{\ppm_\sp}}.
+    \label{eq:stateenergy} &= - \log p(\Po,\Ps|\ppm_\sp) - \frac{1}{2}\trace{\left.\ppd{\log p(\Po,\Ps|\pp)}{\pp}{\pp}\right|_{\ppm_\sp}\Cov_{\ppm_\sp}}\\
+    &= \hat{E}(\Ps).
 \end{align}
-We now need to consider the structure of $p(\Po,\Ps|\pp)$ to find a minimum of $E(\Ps)$ together with its associated curvature and obtain an online algorithm which can process observations sequentially as they come in.
+We now need to consider the structure of $p(\Po,\Ps|\pp)$ to find a minimum of $\hat{E}(\Ps)$ together with its associated curvature and obtain an online algorithm which can process observations sequentially as they come in.
 
 
 \subsection{Online Computation of the Variational Density of the Hidden States}
-In the previous section we have seen that we need to minimise $E(\Ps)$ to find the mean of the variational density $q_\ss(\Ps)$. A major component of $E(\Ps)$ is the joint data-hidden state density $p(\Po,\Ps|\ppm_\sp)$ which is proportional to the true posterior $p(\Ps|\Po,\ppm_\sp)$. The second term of Eq. \ref{eq:stateenergy} accounts for the uncertainty in the parameter estimates. When the variance of the parameters $\Cov_{\ppm_\sp}$ goes to zero, i.e., parameter estimates are very certain, such that the second term in Eq. \ref{eq:stateenergy} becomes zero, minimisation of $E(\Ps)$ is equal to finding a mode of the true posterior $p(\Ps|\Po,\ppm_\sp)$. In this situation, any algorithm which can compute (an approximation of) the posterior can be used and the variational approach is unnecessary. 
+In the previous section we have seen that we need to minimise $\hat{E}(\Ps)$ to find the mean of the variational density $q_\ss(\Ps)$. A major component of $\hat{E}(\Ps)$ is the joint data-hidden state density $p(\Po,\Ps|\ppm_\sp)$ which is proportional to the true posterior $p(\Ps|\Po,\ppm_\sp)$. The second term of Eq. \ref{eq:stateenergy} accounts for the uncertainty in the parameter estimates. When the variance of the parameters $\Cov_{\ppm_\sp}$ goes to zero, i.e., parameter estimates are very certain, such that the second term in Eq. \ref{eq:stateenergy} becomes zero, minimisation of $\hat{E}(\Ps)$ is equal to finding a mode of the true posterior $p(\Ps|\Po,\ppm_\sp)$. In this situation, any algorithm which can compute (an approximation of) the posterior can be used and the variational approach is unnecessary. 
+
 
 \subsubsection{Background: Filtering}
 In particular, we are interested in (online) filtering approaches which sequentially estimate $p(\Ps_{1:t}|\Po_{1:t},\ppm_\sp)$ for increasing $t$ where the index $1:t$ indicates that variables at time points 1 to $t$ are considered such that, e.g., $\Ps_{1:t} = \{\ps_1, \dots, \ps_t\}$. There is a general recursion relating subsequent time points \cite[see e.g.][]{Doucet2011}
@@ -235,17 +240,41 @@ where the model densities $p(\ps_t|\ps_{t-1},\ppm_\sp), p(\po_t|\ps_t,\ppm_\sp)$
 \eq{
     p(\po_t|\Po_{1:t-1}) = \iint p(\ps_{t-1}|\Po_{1:t-1}) p(\ps_t|\ps_{t-1}) p(\po_t|\ps_t) d\ps_{t-1} d\ps_t
 }
-where $p(\ps_t|\Po_{1:t})$ is the usual filter density used in tracking applications which can be computed in a recursion with prediction step
+where $p(\ps_t|\Po_{1:t})$ is the marginal posterior of the current hidden state $\ps_t$ obtained from Eq. \ref{eq:stateposteriorrecursion} by integrating the state history $\Ps_{1:t-1}$ out of $p(\Ps_{1:t}|\Po_{1:t})$. In tracking applications, estimation of the current state $\ps_t$ typically is sufficient. Then, we can estimate the marginal posterior directly in a recursion with prediction step
 \eq{
     \label{eq:filterpredstep} p(\ps_t|\Po_{1:t-1}) = \int p(\ps_t|\ps_{t-1}) p(\ps_{t-1}|\Po_{1:t-1}) d\ps_{t-1}
 }
 followed by an update step
 \eq{
-    \label{eq:filterupdatestep} p(\ps_t|\Po_{1:t}) = \frac{p(\po_t|\ps_t) p(\ps_t|\Po{1:t-1})}{p(\po_t|\Po_{1:t-1})}.
+    \label{eq:filterupdatestep} p(\ps_t|\Po_{1:t}) = \frac{p(\po_t|\ps_t) p(\ps_t|\Po_{1:t-1})}{p(\po_t|\Po_{1:t-1})}.
 }
-These equations can be obtained by integrating $\Ps_{1:t-1}$ out of $p(\Ps_{1:t}|\Po_{1:t})$ in Eq. \ref{eq:stateposteriorrecursion}. Filtering algorithms provide computationally feasible implementations of these equations by making suitable approximations, when analytic solutions cannot be found. The Kalman filter based algorithms mostly work with Eqs. \ref{eq:filterpredstep}, \ref{eq:filterupdatestep} while particle filters approximate the recursion in Eq. \ref{eq:stateposteriorrecursion} \cite{Doucet2011}.
+Filtering algorithms provide computationally feasible implementations of these equations by making suitable approximations, when analytic solutions cannot be found. The Kalman filter based algorithms mostly work with Eqs. \ref{eq:filterpredstep}, \ref{eq:filterupdatestep} while particle filters mostly approximate the recursion in Eq. \ref{eq:stateposteriorrecursion} \cite{Doucet2011}.
 
-Can you get the full posterior $p(\Ps_{1:t}|\Po_{1:t},\ppm_\sp)$ from the marginals $p(\ps_t|\Po_{1:t})$?
+
+\subsubsection{Friston's Generalised Filter}
+The variational approach presents us with a dilemma: On the one hand, it requires estimation of the variational posterior over hidden states at all time points given all data, i.e., the variational posterior distribution of hidden state $\ps_t$ also needs to take data at time point $t+1$ and later into account, calling for smoothing instead of filtering \citep[cf.][]{Beal2003}. On the other hand, we would like to have a pure online algorithm which sequentially computes all necessary quantities as the data comes in, calling for filtering instead of smoothing. Our way out of this dilemma is to make another approximation which could be interpreted as local smoothing within a filtering procedure.
+
+The benefit of smoothing is clear: By looking how observations change in the future you can get a more accurate estimate of a hidden state. That, in turn, may affect your estimate of the following hidden state demonstrating that hidden state estimates covary. Consequently, estimating the full variational posterior $q_{\ss}(\Ps_{1:t})$, even when approximated by a simple Gaussian, requires to estimate covariances between hidden states at all time points. The size of the corresponding covariance matrix increases quadratically with time which is often infeasible in practice. But it appears to be a reasonable assumption that the covariance between posterior hidden state estimates should decrease over time such that the entries in the full covariance matrix should go towards 0 as you go away from the diagonal. 
+
+The approximation we use is based on this assumption and uses the simple trick of state generalisation: states at a given time $t$ are augmented by states at previous and future times in the hope that the new augmented (generalised) states become conditionally independent. The idea can be demonstrated on transforming a second-order Markov dynamics into a first-order Markov dynamics: Assume that a state $\ps_t$ depends on its two predecessors through a function $\ps_t = f(\ps_{t-2}, \ps_{t-1})$, i.e., $\ps_t$ depends on both $\ps_{t-2}$ and $\ps_{t-1}$. We then introduce a generalised state $\psg_t = [\ps_{t-1}^\tr, \ps_t^\tr]^\tr$ and an associated transition function $\gc{f}(\psg_{t-1}) = [\ps_{t-1}^\tr, f(\ps_{t-2}, \ps_{t-1})^\tr]^\tr$. The resulting generalised system now is first-order Markov, i.e., conditional on $\psg_{t-1}$, $\psg_t$ is independent of $\psg_{t-2}$. We can now apply this idea to the states in our problem and define
+\eq{
+    \psg_t = \left[ \begin{array}{c} \ps_{t-n}\\ \vdots\\ \ps_t\\ \vdots\\ \ps_{t+n}\end{array} \right],
+}
+where $n$ is the embedding order of the generalised state. Then state transitions (Eq. \ref{eq:linmodel_dyn}) simply become
+\eq{
+    \label{eq:discrete_generalised_dyn} \psg_t = \gc{f}(\psg_{t-1}) + \png_t^\ss = \left[ \begin{array}{c} \ps_{t-n}\\ \vdots\\ \ps_t\\ \vdots\\ f(\ps_{t+n-1})\end{array} \right] + \png_t^\ss,
+}
+where $f(\cdot)$ is the state transition function of Eq. \ref{eq:linmodel_dyn} and $\png_t^\ss$ is a generalised vector of noise variables which now also allows noise to be correlated across time points. In comparison with the simple example above we here do not gain a reduction of Markov order of the dynamic generative model, because the dynamics already was first-order Markov, but the generalised state representation now allows to represent posterior covariances between states at different time points, at least within the chosen time window.
+
+Idea: variational posterior will then approximately factorise, i.e., $q(\Psg_{1:T}) = \prod_t q(\psg_t)$ (are we eventually only interested in the posteriors over $\ps_t$, but not $\psg_t$?) so that we can optimise it at each time point individually, but of course the dynamics needs to somehow be taken into account, how is done?
+
+How will it be useful to represent posterior covariances, i.e., where will they be used? 
+
+
+\section{Experiments}
+take a problem which has previously been solved with a variational filter (check Beal's thesis), apply the generalised filter and compare results, they should be worse for the generalised filter, but not much
+
+then apply the variational filter on nonlinear synthetic learning problems to see whether it does sensible stuff
 
 
 \section{Nonlinear Gaussian Dynamic Models in Continuous Time}
