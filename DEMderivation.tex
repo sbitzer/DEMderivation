@@ -119,9 +119,11 @@ $x_i \in \R$ & $i$-th element of vector $\bs{x}$\\
 $\bs{X} \in \R^{m\times n}$ & matrix\\
 $\bs{x}_j = \bs{x}_{:,j} \in \R^{m\times 1}$ & $j$-th column of matrix $\bs{X}$\\
 $\bs{x}_{i,:} \in \R^{1\times n}$ & $i$-th row of matrix $\bs{X}$\\
-$x_{ij}\in \R$ & element in $i$-th row and $j$-th column of matrix $\bs{X}$
+$x_{ij}\in \R$ & element in $i$-th row and $j$-th column of matrix $\bs{X}$\\
+$\pd{x}{\bs{y}} = [\frac{\ud x}{\ud y_1}, \dots, \frac{\ud x}{\ud y_m}]^\tr$ & derivative of scalar with respect to vector\\
+$\pd{\bs{x}}{y} = [\frac{\ud x_1}{\ud y}, \dots, \frac{\ud x_m}{\ud y}]$ & derivative of vector with respect to scalar\\
 \end{tabular}
-\caption{matrix notation}
+\caption{Matrix notation. Unless stated otherwise we use denominator notation for matrix derivatives (variable with respect to which we take the derivative is in the first dimension of the result).}
 \label{tab:matrixnot}
 \end{table}
 
@@ -251,7 +253,65 @@ followed by an update step
 Filtering algorithms provide computationally feasible implementations of these equations by making suitable approximations, when analytic solutions cannot be found. The Kalman filter based algorithms mostly work with Eqs. \ref{eq:filterpredstep}, \ref{eq:filterupdatestep} while particle filters mostly approximate the recursion in Eq. \ref{eq:stateposteriorrecursion} \cite{Doucet2011}.
 
 
-\subsubsection{Friston's Generalised Filter}
+\subsubsection{A Gradient Based Filter}
+In the case that the second term of Eq. \ref{eq:stateenergy} is nonzero, i.e., when there is uncertainty over the parameters expressed by a nonzero posterior covariance $\Cov_{\ppm_\sp}$, the standard filtering algorithms cannot be used to obtain a meaningful posterior over hidden states. Instead, we take the gradient based approach which minimises $\hat{E}(\Ps)$ (Eq. \ref{eq:stateenergy}). The problem is that $\hat{E}(\Ps)$ is a function of all hidden states at all time points, but we want a sequential, online algorithm. To achieve this, we sacrifice our ability to infer the covariance of hidden state estimates over time. In particular, we let the variational density factorise such that 
+\eq{
+    q_\ss(\Ps) = \prod_{t=1}^T q_\ss(\ps_t).
+}
+This approach is equivalent to standard filters (cf. Eqs. \ref{eq:filterpredstep}, \ref{eq:filterupdatestep}) which only track the posterior distribution of the most recent hidden state. And equivalent to standard filters, we do take the dependence of a hidden state on previous hidden states into account, although we do not represent the covariance between hidden states in the final posterior. In the following we show that we can use prediction steps of standard filters and replace standard update steps by a gradient based update derived from $\hat{E}(\Ps)$.
+
+The core function we need to consider is the joint data-hidden state density $p(\Po,\Ps|\ppm_\sp)$ which, rolled out in time, is
+\eq{
+    p(\Po,\Ps|\ppm_\sp) = p(\ps_0|\ppm_\sp)\prod_{t=1}^T p(\po_t|\ps_t,\ppm_\sp)p(\ps_t|\ps_{t-1},\ppm_\sp).
+}
+It is our aim to minimise a function of this function with respect to the individual hidden states $\ps_t$ as data points $\po_t, t \in 1,\dots,T$ arrive. Considering the first data point only we have
+\eq{
+    p(\po_1,\ps_1,\ps_0|\ppm_\sp) = p(\ps_0|\ppm_\sp)p(\po_1|\ps_1,\ppm_\sp)p(\ps_1|\ps_0,\ppm_\sp),
+}
+but we are not interested in the value of $\ps_0$ over which we have defined the prior distribution $p(\ps_0|\ppm_\sp)$. Hence, we would like to integrate $\ps_0$ out of the equation
+\eq{\label{eq:prevstateintegral}
+    p(\po_1,\ps_1|\ppm_\sp) = p(\po_1|\ps_1,\ppm_\sp)\int p(\ps_1|\ps_0,\ppm_\sp)p(\ps_0|\ppm_\sp) \ud\ps_0.
+}
+Because we consider nonlinear dynamics, the integral needs to be approximated, for example, by local linearisation (cf. extended Kalman filter), or by the unscented transform (cf. unscented Kalman filter).
+
+\paragraph{Remark:} In Friston's original proposal \cite{Friston2008a, Friston2008} the prior $p(\ps_0|\ppm_\sp)$ is approximated using a delta function such that the integral simplifies to
+\eq{
+    \int p(\ps_1|\ps_0,\ppm_\sp)p(\ps_0|\ppm_\sp) \ud\ps_0 \approx p(\ps_1|\ppm_{\ss_0}, \ppm_\sp)
+}
+where $\ppm_{\ss_0}$ is the value for $\ps_0$ selected by the delta function, e.g., the mean of the original prior distribution. This is the simplest, computationally most efficient approximation of the integral you can make, but it ignores all uncertainty over the previous hidden state.
+
+\paragraph{}Whatever approximation is used for the integral, it provides us the approximated (Gaussian) density $\hat{p}(\ps_1|\ppm_\sp)$ and Eq. \ref{eq:prevstateintegral} becomes
+\eq{
+     \hat{p}(\po_1,\ps_1|\ppm_\sp) = p(\po_1|\ps_1,\ppm_\sp) \hat{p}(\ps_1|\ppm_\sp)
+}
+of which we now can take the derivative with respect to $\ps_1$ to find the approximate posterior density $q_\ss(\ps_1)$. This leads to an obvious iterative procedure in which the previous posterior $q_\ss(\ps_{t-1})$ takes the place of the prior $p(\ps_0|\ppm_\sp)$ for all subsequent hidden states $\ps_t$. The computation of $\hat{p}(\ps_t|\ppm_\sp)$, then, corresponds exactly to the prediction step in standard filters and the following gradient update to the standard update step. 
+
+
+\subsubsection{Gradient Updates}
+The prediction step provides us with an approximated joint (Gaussian) density $\hat{p}(\po_t,\ps_t|\ppm_\sp)$ which is independent of previous hidden states. We can then define the corresponding energy function $\hat{E}(\ps_t)$, which we want to minimise, as
+\eq{
+    \hat{E}(\ps_t) = - \log \hat{p}(\po_t,\ps_t|\ppm_\sp) - \frac{1}{2}\trace{\left.\ppd{\log \hat{p}(\po_t,\ps_t|\ppm_\sp)}{\pp}{\pp}\right|_{\ppm_\sp}\Cov_{\ppm_\sp}}.
+}
+We initialise $\ps_t$ to the mean $\ppm_{\hat{\ss}_t}$ of the prediction density $\hat{p}(\ps_t|\ppm_\sp)$ computed in the prediction step. We now first consider the gradient defined by the first term, i.e.
+\eq{
+    \left. -\pd{\log \hat{p}(\po_t,\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. -\pd{\log p(\po_t|\ps_t,\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} - \left. \pd{\log \hat{p}(\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}}.
+}
+At least in the initial step, the gradient from the prediction density is 0:
+\eq{
+    \left. \pd{\log \hat{p}(\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. -\Cov_{\hat{\ss}_t}^{-1} (\ps_t - \ppm_{\hat{\ss}_t}) \right|_{\ppm_{\hat{\ss}_t}} = \bs{0},
+}
+because $\hat{p}(\ps_t|\ppm_\sp) \sim \N(\ppm_{\hat{\ss}_t}, \Cov_{\hat{\ss}_t})$. The gradient of the observation density is
+\eq{
+    \left. \pd{\log p(\po_t|\ps_t,\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. \pd{g(\ps_t, \pp_\so)}{\ps_t}\Cov_\so^{-1}(\po_t - g(\ps_t, \pp_\so)) \right|_{\ppm_{\hat{\ss}_t}},
+}
+because $p(\po_t|\ps_t,\ppm_\sp) \sim \N(g(\ps_t, \pp_\so), \Cov_\so)$.
+
+\paragraph{Remark:} How does this relate to extended Kalman filter updates?
+
+\paragraph{} next: gradient of parameter uncertainty term, perhaps first for delta approximation, then for unscented transform, then: discussion of gradient descent procedure (making a single step only, or making several steps until new data point arrives, efficiency can perhaps be shown experimentally)
+
+
+\subsubsection{Friston's Generalised State Representation}
 The variational approach presents us with a dilemma: On the one hand, it requires estimation of the variational posterior over hidden states at all time points given all data, i.e., the variational posterior distribution of hidden state $\ps_t$ also needs to take data at time point $t+1$ and later into account, calling for smoothing instead of filtering \citep[cf.][]{Beal2003}. On the other hand, we would like to have a pure online algorithm which sequentially computes all necessary quantities as the data comes in, calling for filtering instead of smoothing. Our way out of this dilemma is to make another approximation which could be interpreted as local smoothing within a filtering procedure.
 
 The benefit of smoothing is clear: By looking how observations change in the future you can get a more accurate estimate of a hidden state. That, in turn, may affect your estimate of the following hidden state demonstrating that hidden state estimates covary. Consequently, estimating the full variational posterior $q_{\ss}(\Ps_{1:t})$, even when approximated by a simple Gaussian, requires to estimate covariances between hidden states at all time points. The size of the corresponding covariance matrix increases quadratically with time which is often infeasible in practice. But it appears to be a reasonable assumption that the covariance between posterior hidden state estimates should decrease over time such that the entries in the full covariance matrix should go towards 0 as you go away from the diagonal. 
@@ -269,6 +329,8 @@ where $f(\cdot)$ is the state transition function of Eq. \ref{eq:linmodel_dyn} a
 Idea: variational posterior will then approximately factorise, i.e., $q(\Psg_{1:T}) = \prod_t q(\psg_t)$ (are we eventually only interested in the posteriors over $\ps_t$, but not $\psg_t$?) so that we can optimise it at each time point individually, but of course the dynamics needs to somehow be taken into account, how is done?
 
 How will it be useful to represent posterior covariances, i.e., where will they be used? 
+
+The variational approach leads to the optimisation in which you find the posterior mode using gradient descent. The structure of that optimisation problem is the same with and without generalised representation. So what is the generalised representation good for? When you find a sequential way of doing this gradient descent, can there be a way of incorporating the posterior uncertainty similar to other filtering approaches, or is it fundamentally impossible to do so? What is the sequential gradient descent procedure?
 
 
 \section{Experiments}
