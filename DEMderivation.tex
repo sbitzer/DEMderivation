@@ -293,21 +293,21 @@ The prediction step provides us with an approximated joint (Gaussian) density $\
 \eq{
     \hat{E}(\ps_t) = - \log \hat{p}(\po_t,\ps_t|\ppm_\sp) - \frac{1}{2}\trace{\left.\ppd{\log \hat{p}(\po_t,\ps_t|\ppm_\sp)}{\pp}{\pp}\right|_{\ppm_\sp}\Cov_{\ppm_\sp}}.
 }
-We initialise $\ps_t$ to the mean $\ppm_{\hat{\ss}_t}$ of the prediction density $\hat{p}(\ps_t|\ppm_\sp)$ computed in the prediction step. We now first consider the gradient defined by the first term, i.e.
+We initialise $\ps_t$ to some suitable value $\ps^*$. We now first consider the gradient defined by the first term, i.e.
 \eq{
-    \left. -\pd{\log \hat{p}(\po_t,\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. -\pd{\log p(\po_t|\ps_t,\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} - \left. \pd{\log \hat{p}(\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}}.
+    \left. -\pd{\log \hat{p}(\po_t,\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ps^*} = \left. -\pd{\log p(\po_t|\ps_t,\ppm_\sp)}{\ps_t} \right|_{\ps^*} - \left. \pd{\log \hat{p}(\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ps^*}.
 }
-At least in the initial step, the gradient from the prediction density is 0:
+The gradient of the prediction density is
 \eq{
-    \left. \pd{\log \hat{p}(\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. -\Cov_{\hat{\ss}_t}^{-1} (\ps_t - \ppm_{\hat{\ss}_t}) \right|_{\ppm_{\hat{\ss}_t}} = \bs{0},
+    \left. \pd{\log \hat{p}(\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ps^*} = -\Cov_{\hat{\ss}_t}^{-1} (\ps^* - \ppm_{\hat{\ss}_t}),
 }
-because $\hat{p}(\ps_t|\ppm_\sp) \sim \N(\ppm_{\hat{\ss}_t}, \Cov_{\hat{\ss}_t})$. Consequently, it is clear that several gradient steps are necessary to reach an appropriate optimum of the objective function. If only a single gradient step is taken after each incoming observation, the hidden state uncertainty quantified by $\Cov_{\hat{\ss}_t}$ will never be taken into account. Friston's filter runs in continuous time, so there always is a new observation and no time to run intermediate gradient steps. So he needed to find another way of including hidden state uncertainty into the gradients. He did this with generalised state representations (see Sec. \ref{sec:genstaterep} below). It is currently unclear to me whether you need generalised states when you can run several intermediate gradient steps between incoming observations.
-
-The gradient of the observation density is
+because $\hat{p}(\ps_t|\ppm_\sp) \sim \N(\ppm_{\hat{\ss}_t}, \Cov_{\hat{\ss}_t})$, and the gradient of the observation density is
 \eq{
-    \left. \pd{\log p(\po_t|\ps_t,\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. \pd{g(\ps_t, \pp_\so)}{\ps_t}\Cov_\so^{-1}(\po_t - g(\ps_t, \pp_\so)) \right|_{\ppm_{\hat{\ss}_t}},
+    \left. \pd{\log p(\po_t|\ps_t,\ppm_\sp)}{\ps_t} \right|_{\ps^*} = \left. \pd{g(\ps_t, \pp_\so)}{\ps_t} \right|_{\ps^*}\Cov_\so^{-1}(\po_t - g(\ps^*, \pp_\so)),
 }
 because $p(\po_t|\ps_t,\ppm_\sp) \sim \N(g(\ps_t, \pp_\so), \Cov_\so)$.
+
+Several initial values $\ps^*$ may be used depending on what you believe to be most beneficial. A good candidate is the mean of the previous approximated posterior distribution $\ppm_{\ss_{t-1}}$. My intuition tells me that, if you do this and your model is linear, then a single gradient step to the minimum of the energy function should directly lead to the standard Kalman filter updates. (\todo: check!) Alternatively, it is conceivable to set the initial value $\ps^*$ to the mean of the predictive density $\ppm_{\hat{\ss}_t}$. This may be advantageous, when the observed process follows the model reasonably well such that the real hidden state values are close to their predictions. Note, however, that in this case, the gradient of the prediction density is 0 at the initial value $\ps^* = \ppm_{\hat{\ss}_t}$. Consequently, it is clear that several gradient steps are necessary to reach an appropriate optimum of the objective function. If only a single gradient step is taken after each incoming observation, the hidden state uncertainty quantified by $\Cov_{\hat{\ss}_t}$ will never be taken into account. Friston's filter runs in continuous time, so there always is a new observation and no time to run intermediate gradient steps. So he needed to find another way of including hidden state uncertainty into the gradients. He did this with generalised state representations (see Sec. \ref{sec:genstaterep} below). It is currently unclear to me whether you need generalised states when you can run several intermediate gradient steps between incoming observations. Furthermore, the appropriateness of the alternative starting values may only be determined for each problem (model) separately.
 
 \paragraph{Remark:} How does this relate to extended Kalman filter updates?
 
