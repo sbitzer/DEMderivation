@@ -286,6 +286,7 @@ where $\ppm_{\ss_0}$ is the value for $\ps_0$ selected by the delta function, e.
 }
 of which we now can take the derivative with respect to $\ps_1$ to find the approximate posterior density $q_\ss(\ps_1)$. This leads to an obvious iterative procedure in which the previous posterior $q_\ss(\ps_{t-1})$ takes the place of the prior $p(\ps_0|\ppm_\sp)$ for all subsequent hidden states $\ps_t$. The computation of $\hat{p}(\ps_t|\ppm_\sp)$, then, corresponds exactly to the prediction step in standard filters and the following gradient update to the standard update step. 
 
+\paragraph{Remark:} The prediction step is incomplete, because the prediction density $\hat{p}(\ps_t|\ppm_\sp)$ does not take the uncertainty over parameters into account. This can lead to distorted results, but I currently do not know of a good solution for including parameter uncertainty in the prediction density.
 
 \subsubsection{Gradient Updates}
 The prediction step provides us with an approximated joint (Gaussian) density $\hat{p}(\po_t,\ps_t|\ppm_\sp)$ which is independent of previous hidden states. We can then define the corresponding energy function $\hat{E}(\ps_t)$, which we want to minimise, as
@@ -300,7 +301,9 @@ At least in the initial step, the gradient from the prediction density is 0:
 \eq{
     \left. \pd{\log \hat{p}(\ps_t|\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. -\Cov_{\hat{\ss}_t}^{-1} (\ps_t - \ppm_{\hat{\ss}_t}) \right|_{\ppm_{\hat{\ss}_t}} = \bs{0},
 }
-because $\hat{p}(\ps_t|\ppm_\sp) \sim \N(\ppm_{\hat{\ss}_t}, \Cov_{\hat{\ss}_t})$. The gradient of the observation density is
+because $\hat{p}(\ps_t|\ppm_\sp) \sim \N(\ppm_{\hat{\ss}_t}, \Cov_{\hat{\ss}_t})$. Consequently, it is clear that several gradient steps are necessary to reach an appropriate optimum of the objective function. If only a single gradient step is taken after each incoming observation, the hidden state uncertainty quantified by $\Cov_{\hat{\ss}_t}$ will never be taken into account. Friston's filter runs in continuous time, so there always is a new observation and no time to run intermediate gradient steps. So he needed to find another way of including hidden state uncertainty into the gradients. He did this with generalised state representations (see Sec. \ref{sec:genstaterep} below). It is currently unclear to me whether you need generalised states when you can run several intermediate gradient steps between incoming observations.
+
+The gradient of the observation density is
 \eq{
     \left. \pd{\log p(\po_t|\ps_t,\ppm_\sp)}{\ps_t} \right|_{\ppm_{\hat{\ss}_t}} = \left. \pd{g(\ps_t, \pp_\so)}{\ps_t}\Cov_\so^{-1}(\po_t - g(\ps_t, \pp_\so)) \right|_{\ppm_{\hat{\ss}_t}},
 }
@@ -312,6 +315,7 @@ because $p(\po_t|\ps_t,\ppm_\sp) \sim \N(g(\ps_t, \pp_\so), \Cov_\so)$.
 
 
 \subsubsection{Friston's Generalised State Representation}
+\label{sec:genstaterep}
 The variational approach presents us with a dilemma: On the one hand, it requires estimation of the variational posterior over hidden states at all time points given all data, i.e., the variational posterior distribution of hidden state $\ps_t$ also needs to take data at time point $t+1$ and later into account, calling for smoothing instead of filtering \citep[cf.][]{Beal2003}. On the other hand, we would like to have a pure online algorithm which sequentially computes all necessary quantities as the data comes in, calling for filtering instead of smoothing. Our way out of this dilemma is to make another approximation which could be interpreted as local smoothing within a filtering procedure.
 
 The benefit of smoothing is clear: By looking how observations change in the future you can get a more accurate estimate of a hidden state. That, in turn, may affect your estimate of the following hidden state demonstrating that hidden state estimates covary. Consequently, estimating the full variational posterior $q_{\ss}(\Ps_{1:t})$, even when approximated by a simple Gaussian, requires to estimate covariances between hidden states at all time points. The size of the corresponding covariance matrix increases quadratically with time which is often infeasible in practice. But it appears to be a reasonable assumption that the covariance between posterior hidden state estimates should decrease over time such that the entries in the full covariance matrix should go towards 0 as you go away from the diagonal. 
